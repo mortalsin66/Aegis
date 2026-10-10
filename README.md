@@ -34,14 +34,15 @@
 
 ## Установка
 
+Одной командой:
+
 ```bash
-git clone https://github.com/mortalsin66/Aegis.git /opt/aegis
-cd /opt/aegis
-sudo bash install.sh
+curl -fsSL https://raw.githubusercontent.com/mortalsin66/Aegis/main/install.sh | sudo bash
 ```
 
-Скрипт `install.sh` установит всё необходимое: Node.js 22, pnpm, системные
-зависимости, соберёт фронтенд и настроит systemd-сервис `aegis-agent`.
+Скрипт сам склонирует репозиторий в `/opt/aegis`, установит все зависимости
+(Node.js 22, pnpm, build-инструменты), соберёт фронтенд и настроит
+systemd-сервис `aegis-agent`.
 
 После установки панель доступна по адресу:
 
