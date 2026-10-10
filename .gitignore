@@ -1,0 +1,16 @@
+# зависимости и сборка
+node_modules/
+.pnpm-store/
+web/dist/
+
+# секреты и локальные файлы (пароли, токены, 2FA)
+_ssh/
+.aegis-*
+.orbit-*
+
+# scratch-файл (ранний прототип, не часть панели)
+/index.html
+
+# системное
+.DS_Store
+*.log

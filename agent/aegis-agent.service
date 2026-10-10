@@ -1,0 +1,18 @@
+[Unit]
+Description=Aegis Agent — панель управления сервером
+After=network.target
+
+[Service]
+Type=simple
+# Для полного управления (systemctl, kill процессов) агенту нужны привилегии root.
+# Позже можно перейти на выделенного пользователя с sudo-правами на конкретные команды.
+User=root
+WorkingDirectory=/opt/aegis/agent
+ExecStart=/usr/bin/node src/index.js
+Restart=on-failure
+RestartSec=3
+Environment=NODE_ENV=production
+Environment=PORT=9000
+
+[Install]
+WantedBy=multi-user.target
