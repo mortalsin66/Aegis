@@ -1737,7 +1737,7 @@ app.post('/api/updates/apply', async (req, reply) => {
   const id = 'apt-' + Math.random().toString(36).slice(2, 8)
   const job = { id, status: 'running', output: '' }
   dockerJobs.set(id, job)
-  const proc = spawn('bash', ['-c', 'DEBIAN_FRONTEND=noninteractive apt-get upgrade -y'], { stdio: ['ignore', 'pipe', 'pipe'] })
+  const proc = spawn('bash', ['-c', 'DEBIAN_FRONTEND=noninteractive apt-get update && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y --with-new-pkgs -o APT::Get::Always-Include-Phased-Updates=true'], { stdio: ['ignore', 'pipe', 'pipe'] })
   proc.stdout.on('data', (d) => {
     job.output = (job.output + d.toString()).slice(-3000)
   })
