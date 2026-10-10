@@ -17,17 +17,23 @@ fi
 
 export DEBIAN_FRONTEND=noninteractive
 
-# --- 0. исходники: если запущен не из репозитория — клонируем в /opt/aegis ---
+# --- 0. исходники: если запущен не из репозитория — клонируем/обновляем /opt/aegis ---
 if [[ -d "agent" && -d "web" && -f "agent/src/index.js" ]]; then
   APP_DIR="$(pwd)"
   echo "== [0/7] Исходники уже на месте: $APP_DIR =="
 else
-  echo "== [0/7] Клонирование $REPO_URL =="
   apt-get update -y
   apt-get install -y git curl ca-certificates
   APP_DIR="${APP_DIR:-/opt/aegis}"
-  git clone "$REPO_URL" "$APP_DIR"
-  cd "$APP_DIR"
+  if [[ -d "$APP_DIR/.git" ]]; then
+    echo "== [0/7] Обновление существующего $APP_DIR =="
+    cd "$APP_DIR"
+    git pull --ff-only
+  else
+    echo "== [0/7] Клонирование $REPO_URL =="
+    git clone "$REPO_URL" "$APP_DIR"
+    cd "$APP_DIR"
+  fi
 fi
 
 echo "== [1/7] Системные зависимости =="
@@ -50,6 +56,7 @@ echo "  pnpm: $(pnpm -v)"
 echo "== [4/7] Зависимости агента =="
 cd "$APP_DIR/agent"
 pnpm install
+pnpm rebuild node-pty || true
 
 echo "== [5/7] Сборка веб-панели =="
 cd "$APP_DIR/web"
