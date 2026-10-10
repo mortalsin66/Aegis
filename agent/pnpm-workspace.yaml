@@ -1,2 +1,3 @@
-onlyBuiltDependencies:
-  - node-pty
+nodeLinker: hoisted
+allowBuilds:
+  node-pty: true
