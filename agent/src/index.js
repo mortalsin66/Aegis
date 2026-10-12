@@ -416,15 +416,17 @@ app.get('/api/fs', async (req, reply) => {
         let size = null
         let mtime = null
         let mode = null
+        let isDir = e.isDirectory()
         try {
           const st = await fs.stat(full)
           size = st.size
           mtime = st.mtimeMs
           mode = st.mode
+          if (st.isDirectory()) isDir = true
         } catch {
           /* битые симлинки и т.п. — игнорируем stat */
         }
-        return { name: e.name, dir: e.isDirectory(), symlink: e.isSymbolicLink(), size, mtime, mode }
+        return { name: e.name, dir: isDir, symlink: e.isSymbolicLink(), size, mtime, mode }
       }),
     )
     items.sort((a, b) => (b.dir ? 1 : 0) - (a.dir ? 1 : 0) || a.name.localeCompare(b.name))
@@ -439,6 +441,7 @@ app.get('/api/fs/read', async (req, reply) => {
   if (!p) return reply.code(400).send({ error: 'path required' })
   try {
     const st = await fs.stat(p)
+    if (st.isDirectory()) return reply.code(400).send({ error: 'Это папка' })
     if (st.size > 2 * 1024 * 1024) {
       return reply.code(413).send({ error: 'Файл слишком большой (более 2 МБ)' })
     }
