@@ -1899,7 +1899,7 @@ app.post('/api/panel/update', async (req, reply) => {
       log('Копирование агента...')
       await execAsync('cp -r /opt/aegis/.update-tmp/agent/. /opt/aegis/agent/')
       log('Установка зависимостей и сборка фронтенда...')
-      await execAsync('cd /opt/aegis/.update-tmp/web && corepack pnpm install --no-frozen-lockfile && corepack pnpm build')
+      await execAsync('cd /opt/aegis/.update-tmp/web && pnpm install --no-frozen-lockfile && pnpm build')
       log('Обновление dist...')
       await execAsync('rm -rf /opt/aegis/web/dist/* && cp -r /opt/aegis/.update-tmp/web/dist/. /opt/aegis/web/dist/')
       await execAsync(`printf '%s' '${status.latest}' > /opt/aegis/.aegis-version`)
