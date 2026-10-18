@@ -1,0 +1,4 @@
+# GitHub покажет кнопку «Sponsor» на странице репозитория.
+# Для этого на аккаунте mortalsin66 должен быть включён GitHub Sponsors
+# (Settings → Sponsor dashboard). Без этого кнопка не отображается.
+github: mortalsin66
