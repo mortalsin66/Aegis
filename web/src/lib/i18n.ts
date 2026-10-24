@@ -3,6 +3,11 @@ import { ref } from 'vue'
 export type Locale = 'ru' | 'en'
 
 const ru: Record<string, string> = {
+  "dashboard.bytesPerSec": "Б/с",
+  "dashboard.kbPerSec": "КБ/с",
+  "dashboard.gbPerSec": "ГБ/с",
+  "dashboard.netHint": "Трафик интерфейса сервера: ↓ входящий, ↑ исходящий",
+
   'dashboard.hint': 'Состояние сервера в реальном времени',
   "monitor.offline": "Нет связи с агентом. Показаны последние данные:",
   "files.calculateSize": "Рассчитать размер",
@@ -201,6 +206,11 @@ const ru: Record<string, string> = {
 }
 
 const en: Record<string, string> = {
+  "dashboard.bytesPerSec": "B/s",
+  "dashboard.kbPerSec": "KB/s",
+  "dashboard.gbPerSec": "GB/s",
+  "dashboard.netHint": "Server interface traffic: ↓ received, ↑ sent",
+
   'dashboard.hint': 'Live server status',
   "monitor.offline": "Agent disconnected. Last received data:",
   "files.calculateSize": "Calculate size",

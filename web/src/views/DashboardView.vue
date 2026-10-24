@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useAgent } from '../lib/agent'
+import { formatNetworkRate } from '../lib/network-rate'
 import { apiGet } from '../lib/api'
 import { t } from '../lib/i18n'
 import CpuChartWidget from '../components/CpuChartWidget.vue'
@@ -47,6 +48,8 @@ const mem = ref(0)
 const disk = ref(0)
 const dn = ref(0)
 const up = ref(0)
+const downRate = computed(() => formatNetworkRate(dn.value))
+const upRate = computed(() => formatNetworkRate(up.value))
 const { state: agent } = useAgent()
 const memTotalGb = ref(0)
 const cpuHistory = ref<number[]>([])
@@ -81,8 +84,8 @@ watch(
     memTotalGb.value = m.mem.total / 1e9
     const rootD = (m.disk || []).find((d) => d.mount === '/') || (m.disk || [])[0]
     disk.value = rootD?.use ?? disk.value
-    dn.value = m.net.rx / (1024 ** 2)
-    up.value = m.net.tx / (1024 ** 2)
+    dn.value = m.net.rx
+    up.value = m.net.tx
     cpuHistory.value.push(cpu.value)
     if (cpuHistory.value.length > 30) cpuHistory.value.shift()
     memHistory.value.push(mem.value)
@@ -315,17 +318,16 @@ const palette = computed<{ type: WidgetType; label: string }[]>(() => [
             <span class="text-[10px] font-mono text-slate-500">{{ agent.metrics?.net.iface || '…' }}</span>
           </div>
           <div class="mt-2 flex items-end gap-2">
-            <span class="text-3xl font-bold font-mono text-white">{{ dn.toFixed(1) }}</span>
-            <span class="text-slate-500 mb-1">{{ t('dashboard.mbPerSec') }}</span>
+            <span class="text-3xl font-bold font-mono text-white">{{ downRate.value }}</span>
+            <span class="text-slate-500 mb-1">{{ t(downRate.unitKey) }}</span>
           </div>
           <svg viewBox="0 0 100 40" class="w-full h-10 mt-1" preserveAspectRatio="none">
             <polyline :points="netDownSpark" fill="none" stroke="#22d3ee" stroke-width="1.5" />
             <polyline :points="netUpSpark" fill="none" stroke="#34d399" stroke-width="1" />
           </svg>
-          <div class="mt-1 flex items-center gap-3 text-[11px] font-mono">
-            <span class="text-accent-400">↓ {{ dn.toFixed(1) }}</span>
-            <span class="text-emerald-400">↑ {{ up.toFixed(1) }}</span>
-            <span class="text-slate-500 ml-auto">{{ t('dashboard.mbPerSec') }}</span>
+          <div class="mt-1 flex flex-wrap items-center gap-3 text-[11px] font-mono" :title="t('dashboard.netHint')">
+            <span class="text-accent-400">↓ {{ downRate.value }} {{ t(downRate.unitKey) }}</span>
+            <span class="text-emerald-400">↑ {{ upRate.value }} {{ t(upRate.unitKey) }}</span>
           </div>
         </template>
 
