@@ -1,143 +1,144 @@
 # Aegis
 
-Само-хостинговая панель управления Linux-сервером — лёгкая альтернатива Cockpit / Portainer.
-Тёмная тема, акцент на скорость и удобство.
+**[English](README.md) · [Русский](README.ru.md)**
 
-## Возможности
+A self-hosted Linux server management panel — a lightweight alternative to Cockpit / Portainer.
+A dark interface focused on speed and everyday administration.
 
-- **Дашборд** — живые метрики: CPU, память, диск, сеть (графики в реальном времени)
-- **Сервисы** — управление systemd-юнитами (start / stop / restart, статусы)
-- **Процессы** — список, поиск, завершение процессов
-- **Файлы** — файловый менеджер (загрузка, правка, архивы, права/владельцы)
-- **Терминал** — веб-терминал на xterm.js + tmux (сессии переживают перезагрузку страницы)
-- **Сеть** — интерфейсы, открытые порты, файрвол (ufw / iptables / firewalld), маршруты, DNS
-- **Контейнеры** — Docker: контейнеры, образы, тома, сети, стэки (Compose)
-- **Пользователи** — создание, sudo-права, смена пароля
-- **Журнал** — просмотр systemd-логов
-- **Обновления** — apt-обновления системы
-- **Безопасность** — 2FA (TOTP), смена пароля/порта, принудительная смена пароля после первого входа
-- **Интерфейс** — русский / английский, адаптивная мобильная версия
-- **Самообновление** — панель проверяет новые релизы этого репозитория и обновляется по кнопке
+## Features
 
-## Технологии
+- **Dashboard** — live CPU, memory, disk and network metrics, with persistent history and charts.
+- **Services** — manage systemd units: start, stop, restart and inspect status.
+- **Processes** — list, search and terminate processes.
+- **Files** — upload, edit, archive, extract, change permissions and ownership, and calculate folder sizes on demand.
+- **Terminal** — xterm.js + tmux; tmux sessions survive page reloads.
+- **Network** — interfaces, listening ports, firewall (ufw / iptables / firewalld), routes and DNS.
+- **Containers** — Docker containers, images, volumes, networks and Compose stacks.
+- **Users** — create accounts, manage sudo access and change passwords.
+- **Logs** — inspect systemd logs.
+- **Updates** — install apt system updates.
+- **Security** — TOTP 2FA, password and port changes, session revocation and restricted setup when the default password is still in use.
+- **Activity** — persistent administrative action log without request bodies or terminal input.
+- **Interface** — English and Russian, with a responsive mobile layout.
+- **Self-updates** — check this repository for new releases and update from the panel.
 
-| Слой      | Стек                                                              |
-|-----------|-------------------------------------------------------------------|
-| Бэкенд    | Node.js, Fastify, Socket.IO, systeminformation, node-pty          |
-| Фронтенд  | Vue 3, Vite, Tailwind CSS, Chart.js, xterm.js                     |
+## Stack
 
-## Требования
+| Layer | Technologies |
+|-------|--------------|
+| Backend | Node.js, Fastify, Socket.IO, systeminformation, node-pty |
+| Frontend | Vue 3, Vite, Tailwind CSS, Chart.js, xterm.js |
 
-- Ubuntu / Debian (проверено на Ubuntu 26.04)
-- root-доступ (агент управляет системой, работает от root)
-- ~500 МБ свободного места
+## Requirements
 
-## Установка
+- Ubuntu / Debian; the project has been tested on Ubuntu 26.04.
+- Root access: the agent runs as root to administer the server.
+- Approximately 500 MB of free disk space.
+- Node.js 22 or newer and pnpm; the installer sets these up.
 
-Одной командой:
+## Installation
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/mortalsin66/Aegis/main/install.sh | sudo bash
 ```
 
-Скрипт сам склонирует репозиторий в `/opt/aegis`, установит все зависимости
-(Node.js 22, pnpm, build-инструменты), соберёт фронтенд и настроит
-systemd-сервис `aegis-agent`.
+The script clones the repository into `/opt/aegis`, installs Node.js 22, pnpm and build tools,
+builds the frontend and configures the `aegis-agent` systemd service.
 
-После установки панель доступна по адресу:
+Open the panel at:
 
+```text
+http://<server-IP>:9000
 ```
-http://<IP-сервера>:9000
-```
 
-**Логин: `admin`.** Установщик генерирует случайный пароль и выводит его в конце установки.
-Существующий пароль при повторной установке сохраняется. Порт можно поменять в «Настройки → Порт панели» (правила
-файрвола добавляются автоматически).
+**Username: `admin`.** The installer generates a random password and prints it at the end.
+Reinstalling preserves the existing password. Change the port in **Settings → Panel port**;
+the panel automatically adds the corresponding ufw rule.
 
-## Обновление
+## Updating
 
-Панель раз в 6 часов проверяет новые релизы в этом репозитории
-(«Настройки → Обновление панели»). При наличии новой версии достаточно нажать
-«Обновить» — панель скачает, пересоберёт и перезапустится сама.
+The panel checks this repository for releases every six hours. Open
+**Settings → Panel update → Check → Update** to download, build and restart the panel.
+Sign in again after the restart. [Latest release notes](RELEASE_NOTES.md) are available in
+English and Russian; previous notes are stored in [docs/releases](docs/releases).
 
-## Поддержать проект
+### Upgrading an older installation
 
-Aegis — бесплатный проект с открытым исходным кодом. Если он тебе
-помогает, буду благодарен за поддержку в крипте (USDT/USDC):
+Use the built-in update button. The agent entry point installs locked dependencies even when
+the older updater only copies the new source files. This requires Node.js >=22 and working pnpm;
+the standard installer already installed Node.js 22. Password, TOTP and port settings are preserved.
+If the password is still `admin`, the setup token only permits replacing it with a password
+of at least 12 characters.
 
-| Сеть | Монета | Адрес |
-|------|--------|-------|
+Updates started from v1.1.0 or newer are built separately, checked, and switched by an independent
+systemd job. A failed health check restores the previous version automatically. The latest backup
+is kept in `.aegis-rollback`; do not remove it during an update. The first upgrade still runs
+through the older updater, whose file copy is not atomic.
+
+## Monitoring and administration
+
+- **Folder sizes:** click **Calculate size** in the size column or **Folder sizes on this page**.
+  Calculation includes nested files and does not block navigation. Permission errors are shown
+  separately, not as zero bytes. At most two scans run concurrently.
+- **Network traffic:** the dashboard, interface list and history chart automatically choose B/s,
+  KB/s, MB/s or GB/s. Values describe server interface traffic, not only panel requests:
+  ↓ received, ↑ sent.
+- **History:** up to 24 hours of CPU, RAM, disk and network history is saved in
+  `agent/.aegis-history.json` and survives restarts.
+- **Activity:** the Activity page records administrative changes. Request bodies and terminal
+  input are not stored.
+- **Read-only account:** set `AEGIS_VIEWER_USER` and `AEGIS_VIEWER_PASSWORD` in the systemd environment,
+  then restart the service. The observer can view monitoring, services and logs, but cannot modify
+  the system, open a terminal, browse arbitrary files, read Compose configurations or inspect
+  container environment variables.
+- **Server profiles:** settings are saved in the current browser. Each panel opens separately with
+  its own session; centralized multi-server administration is not implemented.
+
+For internet access, use an HTTPS reverse proxy or a VPN. CORS is disabled by default; if the
+frontend is hosted separately, set an explicit comma-separated `AEGIS_ALLOWED_ORIGINS` list.
+The agent retains root privileges; a separate privileged helper is not implemented.
+
+## Support the project
+
+Aegis is free and open source. If it helps you, you can support development with USDT:
+
+| Network | Token | Address |
+|---------|-------|---------|
 | TRC-20 (TRON) | USDT | `TT95SXdQrXMeob8pQqBbiP1kvTsqdqA4hW` |
 | ERC-20 (Ethereum) | USDT | `0x3b1ae446f117dbd9053ef722b6e1f0d96cb6a7ef` |
 
-> Отправляй только USDT в сети TRC-20 (TRON) или ERC-20 (Ethereum).
-> Перевод в другой сети приведёт к потере средств.
+> Send only USDT on TRC-20 (TRON) or ERC-20 (Ethereum). Using another network can result in lost funds.
 
-Также можно поддержать через [GitHub Sponsors](https://github.com/sponsors/mortalsin66).
+You can also support the project through [GitHub Sponsors](https://github.com/sponsors/mortalsin66).
+The in-panel Donate button and wallet addresses are configured in
+[`web/src/lib/donate.ts`](web/src/lib/donate.ts).
 
-Кнопка «Поддержать» в самой панели и адреса кошельков находятся в одном
-месте — [`web/src/lib/donate.ts`](web/src/lib/donate.ts). Поменяй там
-`address` на свои реальные адреса.
+## Project layout
 
-## Структура
-
-```
-agent/    — агент (REST + WebSocket, systemd-сервис aegis-agent)
-web/      — веб-панель (SPA, собирается в web/dist)
-install.sh — установка и настройка сервера
+```text
+agent/       — REST + WebSocket agent; aegis-agent systemd service
+web/         — SPA frontend; builds into web/dist
+docs/releases/ — bilingual release notes
+install.sh   — server installation and setup
 ```
 
-## Переменные окружения (необязательно)
+## Optional environment variables
 
-| Переменная          | По умолчанию | Назначение                          |
-|---------------------|--------------|-------------------------------------|
-| `PORT`              | `9000`       | Порт панели                         |
-| `AEGIS_PASSWORD`    | из установщика | Начальный пароль; существующий хэш имеет приоритет |
-| `AEGIS_USER`        | `admin`      | Логин                               |
-| `AEGIS_TOTP_SECRET` | —            | Секрет 2FA (для автоматизации)      |
-| `JWT_SECRET`        | случайный    | Секрет подписи JWT-токенов          |
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `PORT` | `9000` | Panel port |
+| `AEGIS_PASSWORD` | Generated by the installer | Initial password; a saved password hash takes precedence |
+| `AEGIS_USER` | `admin` | Administrator username |
+| `AEGIS_TOTP_SECRET` | Unset | TOTP secret for automated setup |
+| `JWT_SECRET` | Random | JWT signing secret |
+| `AEGIS_VIEWER_USER` | Unset | Read-only username |
+| `AEGIS_VIEWER_PASSWORD` | Unset | Read-only password |
+| `AEGIS_ALLOWED_ORIGINS` | Unset | Allowed frontend origins, separated by commas |
 
-Задаются в `/etc/systemd/system/aegis-agent.service` в секции `[Service]`
-через `Environment=...`.
+Set these with `Environment=...` in the `[Service]` section of
+`/etc/systemd/system/aegis-agent.service`. Reload systemd and restart the service after changing its configuration.
 
-## Версия 1.1.0
-
-Подробности изменений: [RELEASE_NOTES.md](RELEASE_NOTES.md).
-
-Размер папки: нажмите «Рассчитать размер» в колонке размера или «Размеры папок на странице».
-Расчёт выполняется по запросу, учитывает вложенные файлы и не блокирует навигацию.
-Ошибка доступа показывается отдельно; размеры не подменяются нулём. Максимум два обхода одновременно.
-
-История CPU/RAM/диска/сети хранится до 24 часов в `agent/.aegis-history.json` и переживает перезапуск.
-Журнал административных действий доступен в разделе «Действия»; тела запросов и ввод терминала не сохраняются.
-
-Дополнительная учётная запись только для просмотра задаётся через `AEGIS_VIEWER_USER` и
-`AEGIS_VIEWER_PASSWORD` в окружении systemd. После изменения окружения перезапустите службу.
-Наблюдатель видит мониторинг, сервисы и журналы, но не может менять систему, открывать терминал,
-читать файловый менеджер, Compose-конфигурации и переменные окружения контейнеров.
-
-Профили серверов в настройках сохраняются в текущем браузере. Каждая панель открывается отдельно
-со своей сессией; агрегированное управление несколькими серверами пока не реализовано.
-
-### Переход со старой панели
-
-Используйте встроенную кнопку обновления. Файл запуска агента устанавливает зависимости нового
-релиза по lock-файлу даже при переходе со старого обновлятора. Для перехода требуется Node.js >=22
-и рабочий pnpm; штатный установщик уже устанавливал Node.js 22. Пароль, 2FA и порт сохраняются,
-после перезапуска потребуется повторный вход. Стандартный пароль `admin`, если он ещё используется,
-разрешит только его замену на пароль длиной от 12 символов.
-
-Уже из версии 1.1.0 обновление собирается отдельно, проверяется и переключается независимым
-systemd-заданием. При неудачной проверке здоровья предыдущая версия восстанавливается автоматически.
-Резервная копия последней версии находится в `.aegis-rollback`. Не удаляйте её во время обновления.
-Первый переход выполняет прежний обновлятор, поэтому его копирование файлов ещё не атомарное.
-
-Для доступа из интернета используйте HTTPS reverse proxy либо VPN. По умолчанию CORS отключён;
-для отдельно размещённого интерфейса задайте явный список `AEGIS_ALLOWED_ORIGINS` через запятую.
-Агент сохраняет root-права для административных операций; разделение привилегий на отдельный helper
-не входит в этот релиз.
-
-### Проверки
+## Development checks
 
 ```sh
 cd agent
@@ -149,6 +150,8 @@ pnpm install --frozen-lockfile
 pnpm build
 ```
 
-Linux CI дополнительно проверяет размер каталогов, успешное обновление, ошибку сборки,
-автоматический откат после неудачного health-check и миграцию зависимостей старого обновлятора.
-Новый GitHub Release создаётся автоматически только после успешного прохождения проверок в main.
+Linux CI also checks folder sizes, real HTTP traffic, successful updates, build failures,
+automatic rollback after a failed health check and legacy updater dependency migration.
+New GitHub Releases are published only after main passes the checks.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the bilingual documentation and release-note convention.
