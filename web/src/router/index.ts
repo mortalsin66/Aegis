@@ -1,3 +1,4 @@
+import { role } from '../lib/auth'
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 const DashboardView = () => import('../views/DashboardView.vue')
@@ -68,5 +69,7 @@ const router = createRouter({
       })),
   ],
 })
+
+router.beforeEach(to => role.value === 'viewer' && ['/files', '/terminal', '/users', '/settings', '/audit'].includes(to.path) ? '/' : true)
 
 export default router

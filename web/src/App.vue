@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import router from './router'
 import LoginView from './views/LoginView.vue'
 import Sidebar from './components/Sidebar.vue'
 import Topbar from './components/Topbar.vue'
@@ -12,7 +13,7 @@ const sidebarOpen = ref(false)
 watch(
   token,
   (t) => {
-    if (t) connectAgent()
+    if (t) { connectAgent(); if (role.value === 'viewer' && ['/files', '/terminal', '/users', '/settings', '/audit'].includes(router.currentRoute.value.path)) router.replace('/') }
     else disconnectAgent()
   },
   { immediate: true },

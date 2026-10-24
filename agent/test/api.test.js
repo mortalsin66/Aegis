@@ -18,6 +18,8 @@ test('API rejects command injection and unsafe stack names; audit omits secrets'
     assert.equal((await app.inject({ method: 'POST', url: '/api/stacks/deploy', headers, payload: { name: '..', content: 'secret-compose-content' } })).statusCode, 400)
     assert.equal((await app.inject({ method: 'POST', url: '/api/users/someuser/password', headers, payload: { password: 'bad\nroot:injected' } })).statusCode, 400)
     assert.equal((await app.inject({ url: '/api/logs?unit=demo%3Bid', headers })).statusCode, 400)
+    assert.equal((await app.inject({ url: '/api/fs/du?path=relative', headers })).statusCode, 400)
+    assert.equal((await app.inject({ url: '/api/fs/du?path=' + encodeURIComponent(path.join(dir, 'missing')), headers })).statusCode, 404)
     const audit = (await app.inject({ url: '/api/audit', headers })).json()
     assert.ok(audit.commands.length >= 4); assert.ok(!JSON.stringify(audit).includes('secret-compose-content')); assert.ok(!JSON.stringify(audit).includes('root:injected'))
   } finally { await app.close(); await fs.rm(dir, { recursive: true, force: true }) }

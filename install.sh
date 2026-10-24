@@ -76,8 +76,8 @@ fi
 sed -i "/^\[Service\]/a EnvironmentFile=-$APP_DIR/agent/.aegis-initial.env" /etc/systemd/system/aegis-agent.service
 systemctl daemon-reload
 systemctl enable aegis-agent
-systemctl restart aegis-agent
 node -p 'require("./package.json").version' > "$APP_DIR/.aegis-version"
+systemctl restart aegis-agent
 
 ufw allow 22/tcp >/dev/null 2>&1 || true
 ufw allow "$PANEL_PORT"/tcp >/dev/null 2>&1 || true

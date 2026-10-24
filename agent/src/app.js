@@ -46,7 +46,7 @@ const PANEL_VERSION = (() => {
 })()
 const GITHUB_REPO = 'mortalsin66/Aegis'
 
-const app = Fastify({ logger: { level: 'info' } })
+const app = Fastify({ logger: TEST ? false : { level: 'info' } })
 
 await app.register(cors, { origin: process.env.AEGIS_ALLOWED_ORIGINS ? process.env.AEGIS_ALLOWED_ORIGINS.split(',') : false })
 await app.register(multipart, { limits: { fileSize: 200 * 1024 * 1024 } })
@@ -61,7 +61,9 @@ app.setNotFoundHandler((req, reply) => {
   return reply.sendFile('index.html')
 })
 
-const auth = await registerAuth(app, process.env.AEGIS_STATE_DIR || path.resolve(__dirname, '..'), { onRevoke: () => io?.disconnectSockets(true) })
+const auth = await registerAuth(app, STATE_DIR, { onRevoke: jti => {
+  for (const socket of io.sockets.sockets.values()) if (!jti || socket.data.auth?.jti === jti) socket.disconnect(true)
+} })
 app.get('/api/settings', async () => auth.settings())
 app.post('/api/settings/port', async (req, reply) => {
   const port = Number(req.body?.port)
@@ -115,6 +117,10 @@ app.addHook('preValidation', async (req, reply) => {
     }
     if (url === '/api/network/firewall/rule' && req.body?.from && !/^[a-fA-F0-9.:/]+$/.test(req.body.from)) throw new Error('Invalid source address')
     if (url === '/api/users' && req.method === 'POST') identifier(req.body?.name, 'user')
+    if (url.startsWith('/api/users')) {
+      const name = req.params?.name ?? req.body?.name
+      if (name !== undefined && !/^[a-zA-Z_][a-zA-Z0-9_.-]{0,63}\$?$/.test(name)) throw new Error('Invalid user name')
+    }
     if (url.startsWith('/api/users') && /[\r\n]/.test(req.body?.password || '')) throw new Error('Password contains newline')
   } catch (e) { return reply.code(400).send({ error: e.message }) }
 })
@@ -413,8 +419,12 @@ app.post('/api/fs/upload', async (req, reply) => {
       if (part.type === 'file') {
         if (!dir || !path.isAbsolute(dir)) return reply.code(400).send({ error: 'Provide an absolute path field before files' })
         const dest = path.join(dir, path.basename(part.filename))
-        try { await pipeline(part.file, fsSync.createWriteStream(dest)); if (part.file.truncated) throw new Error('File exceeds upload limit') }
-        catch (e) { await fs.rm(dest, { force: true }).catch(() => {}); throw e }
+        const temporary = path.join(dir, '.aegis-upload-' + crypto.randomUUID())
+        try {
+          await pipeline(part.file, fsSync.createWriteStream(temporary, { flags: 'wx', mode: 0o600 }))
+          if (part.file.truncated) throw new Error('File exceeds upload limit')
+          await fs.rename(temporary, dest)
+        } catch (e) { await fs.rm(temporary, { force: true }).catch(() => {}); throw e }
         saved.push(dest)
       } else if (part.fieldname === 'path') {
         dir = (part.value || '/').toString()
@@ -515,6 +525,7 @@ function runArchiveJob(p, format) {
 async function runExtractJob(p) {
   const dir = path.dirname(p)
   const job = newFsJob('extract', dir)
+  job.indeterminate = true
   const cmd =
     p.endsWith('.tar.gz') || p.endsWith('.tgz')
       ? `tar -xzf ${shellQuote(p)} -C ${shellQuote(dir)}`
@@ -560,11 +571,14 @@ app.post('/api/fs/extract', async (req, reply) => {
 app.get('/api/fs/job/:id', async (req, reply) => {
   const job = fsJobs.get(req.params.id)
   if (!job) return reply.code(404).send({ error: 'job not found' })
-  return { status: job.status, progress: job.progress, error: job.error, target: job.target }
+  return { status: job.status, progress: job.progress, indeterminate: !!job.indeterminate, error: job.error, target: job.target }
 })
 
 const getFolderSize = folderSizes()
-app.get('/api/fs/du', async req => getFolderSize(req.query.path, req.query.refresh === '1'))
+app.get('/api/fs/du', async (req, reply) => {
+  try { return await getFolderSize(req.query.path, req.query.refresh === '1') }
+  catch (e) { return reply.code(e.statusCode || (e.code === 'ENOENT' ? 404 : e.code === 'EACCES' ? 403 : 500)).send({ error: e.message }) }
+})
 
 // ===================== ЖУРНАЛ =====================
 function priorityToLevel(p) {
@@ -872,6 +886,7 @@ app.post('/api/network/firewall/rule/delete', async (req, reply) => {
       return { ok: true, output: (stdout + stderr).trim().slice(-300) }
     }
     if (fw === 'iptables') {
+      if (!/^-A\s+[a-zA-Z0-9_-]+\s+/.test(rule)) return reply.code(400).send({ error: 'Ожидается правило iptables -A' })
       const del = rule.replace(/^-A\s+/, '-D ')
       const { stdout, stderr } = await execAsync(`iptables ${del}`)
       return { ok: true, output: (stdout + stderr).trim().slice(-300) }

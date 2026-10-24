@@ -26,11 +26,22 @@ export async function registerAuth(app, dir, { onRevoke = () => {} } = {}) {
   }
   let [salt, hash] = stored.split(':')
   if (!/^[a-f0-9]{32}$/.test(salt) || !/^[a-f0-9]{128}$/.test(hash)) throw new Error('Invalid password file')
-  let secret = (await read(totpFile)) || process.env.AEGIS_TOTP_SECRET || null
+  await fs.chmod(pwFile, 0o600)
+  const disabledFile = path.join(dir, '.aegis-totp-disabled')
+  let secret = (await read(disabledFile)) ? null : (await read(totpFile)) || process.env.AEGIS_TOTP_SECRET || null
+  if (await read(totpFile)) await fs.chmod(totpFile, 0o600)
   let pending = null
   let epoch = (await read(epochFile)) || crypto.randomUUID()
   await save(epochFile, epoch)
   const jwtSecret = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex')
+  const revokedFile = path.join(dir, '.aegis-revoked.json')
+  const revoked = new Map(JSON.parse((await read(revokedFile)) || '[]'))
+  for (const [id, expiry] of revoked) if (expiry <= Date.now() / 1000) revoked.delete(id)
+  let revocationWrite = Promise.resolve()
+  function persistRevocations() {
+    revocationWrite = revocationWrite.catch(() => {}).then(() => save(revokedFile, JSON.stringify([...revoked])))
+    return revocationWrite
+  }
   async function check(input) {
     if (typeof input !== 'string' || input.length > 1024) return false
     const derived = await scrypt(input, salt, 64)
@@ -43,13 +54,13 @@ export async function registerAuth(app, dir, { onRevoke = () => {} } = {}) {
   const viewerHash = viewerPassword ? await scrypt(viewerPassword, viewerSalt, 64) : null
   const attempts = new Map()
   let activeLogins = 0
-  function issue(role, setup = false) { return jwt.sign({ user: role === 'viewer' ? viewerUser : user, role, setup, epoch }, jwtSecret, { expiresIn: setup ? '10m' : '12h', algorithm: 'HS256' }) }
+  function issue(role, setup = false) { return jwt.sign({ user: role === 'viewer' ? viewerUser : user, role, setup, epoch }, jwtSecret, { expiresIn: setup ? '10m' : '12h', algorithm: 'HS256', jwtid: crypto.randomUUID() }) }
   function verify(token, { allowSetup = false } = {}) {
     const claims = jwt.verify(token, jwtSecret, { algorithms: ['HS256'] })
-    if (claims.epoch !== epoch || !['admin', 'viewer'].includes(claims.role) || (claims.setup && !allowSetup)) throw new Error('Session revoked or restricted')
+    if (claims.epoch !== epoch || !claims.jti || revoked.has(claims.jti) || !['admin', 'viewer'].includes(claims.role) || (claims.setup && !allowSetup)) throw new Error('Session revoked or restricted')
     return claims
   }
-  async function revoke() { const next = crypto.randomUUID(); await save(epochFile, next); epoch = next; onRevoke() }
+  async function revoke() { const next = crypto.randomUUID(); await save(epochFile, next); epoch = next; revoked.clear(); await persistRevocations(); onRevoke() }
   app.decorateRequest('auth', null)
   app.addHook('onRequest', async (req, reply) => {
     const url = req.url.split('?')[0]
@@ -57,7 +68,7 @@ export async function registerAuth(app, dir, { onRevoke = () => {} } = {}) {
     if (['/api/auth/login', '/api/auth/2fa/status', '/api/health'].includes(url)) return
     try {
       req.auth = verify((req.headers.authorization || '').replace(/^Bearer /, ''), { allowSetup: url === '/api/auth/password' })
-      if (req.auth.role === 'viewer' && (!['GET', 'HEAD'].includes(req.method) || /^\/api\/(fs|audit|stacks|containers\/[^/]+\/inspect|settings)/.test(url))) return reply.code(403).send({ error: 'Read-only account: operation unavailable' })
+      if (req.auth.role === 'viewer' && url !== '/api/auth/logout' && (!['GET', 'HEAD'].includes(req.method) || /^\/api\/(fs|audit|stacks|containers\/[^/]+\/inspect|settings)/.test(url))) return reply.code(403).send({ error: 'Read-only account: operation unavailable' })
     } catch { return reply.code(401).send({ error: 'Требуется авторизация' }) }
   })
   app.post('/api/auth/login', { schema: { body: { type: 'object', required: ['username', 'password'], additionalProperties: false, properties: { username: { type: 'string', maxLength: 128 }, password: { type: 'string', maxLength: 1024 }, totp: { type: 'string', maxLength: 16 } } } } }, async (req, reply) => {
@@ -91,7 +102,12 @@ export async function registerAuth(app, dir, { onRevoke = () => {} } = {}) {
     await revoke()
     return { ok: true, token: issue('admin') }
   })
-  app.post('/api/auth/logout', async () => { await revoke(); return { ok: true } })
+  app.post('/api/auth/logout', async req => {
+    for (const [id, expiry] of revoked) if (expiry <= Date.now() / 1000) revoked.delete(id)
+    if (revoked.size >= 10_000) { await revoke(); revoked.clear() }
+    else { revoked.set(req.auth.jti, req.auth.exp); await persistRevocations(); onRevoke(req.auth.jti) }
+    return { ok: true }
+  })
   app.post('/api/auth/2fa/setup', async (req, reply) => {
     if (secret) return reply.code(409).send({ error: '2FA уже включена' })
     pending = { value: authenticator.generateSecret(), until: Date.now() + 10 * 60_000 }
@@ -99,12 +115,12 @@ export async function registerAuth(app, dir, { onRevoke = () => {} } = {}) {
   })
   app.post('/api/auth/2fa/confirm', async (req, reply) => {
     if (!pending || pending.until < Date.now() || !authenticator.check(String(req.body?.totp || ''), pending.value)) return reply.code(400).send({ error: 'Неверный или просроченный код' })
-    await save(totpFile, pending.value); secret = pending.value; pending = null; await revoke()
+    await save(totpFile, pending.value); await fs.rm(disabledFile, { force: true }); secret = pending.value; pending = null; await revoke()
     return { ok: true, token: issue('admin') }
   })
   app.post('/api/auth/2fa/disable', async (req, reply) => {
     if (secret && !authenticator.check(String(req.body?.totp || ''), secret)) return reply.code(400).send({ error: 'Неверный код' })
-    await fs.rm(totpFile, { force: true }); secret = null; pending = null; await revoke()
+    await save(disabledFile, 'disabled'); await fs.rm(totpFile, { force: true }); secret = null; pending = null; await revoke()
     return { ok: true, token: issue('admin') }
   })
   return { verify, settings: () => ({ port: Number(process.env.PORT || 9000), user, twoFactor: !!secret, twoFactorPending: !!pending }) }

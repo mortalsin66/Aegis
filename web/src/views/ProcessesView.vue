@@ -193,7 +193,7 @@ onUnmounted(() => {
               </div>
             </td>
             <td class="px-4 py-2.5 text-right">
-              <button @click="kill(p.pid)" class="px-2.5 py-1 rounded bg-ink-700 hover:bg-bad/20 hover:text-bad text-xs">⊘ {{ t('processes.kill') }}</button>
+              <button v-admin @click="kill(p.pid)" class="px-2.5 py-1 rounded bg-ink-700 hover:bg-bad/20 hover:text-bad text-xs">⊘ {{ t('processes.kill') }}</button>
             </td>
           </tr>
           <tr v-if="!filtered.length">

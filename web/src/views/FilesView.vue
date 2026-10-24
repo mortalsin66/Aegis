@@ -87,6 +87,7 @@ async function calculatePageSizes() {
 const jobOpen = ref(false)
 const jobLabel = ref('')
 const jobProgress = ref(0)
+const jobIndeterminate = ref(false)
 let jobTimer: ReturnType<typeof setInterval> | undefined
 
 async function trackJob(id: string, label: string) {
@@ -96,8 +97,9 @@ async function trackJob(id: string, label: string) {
   if (jobTimer) clearInterval(jobTimer)
   jobTimer = setInterval(async () => {
     try {
-      const r = await apiGet<{ status: string; progress: number; error?: string }>(`/api/fs/job/${id}`)
-      jobProgress.value = r.progress || (r.status === 'running' ? 5 : 0)
+      const r = await apiGet<{ status: string; progress: number; indeterminate?: boolean; error?: string }>(`/api/fs/job/${id}`)
+      jobProgress.value = r.progress || 0
+      jobIndeterminate.value = !!r.indeterminate && r.status === 'running'
       if (r.status === 'done') {
         clearInterval(jobTimer)
         jobTimer = undefined
@@ -483,7 +485,7 @@ onUnmounted(() => {
 <template>
   <div class="h-full flex flex-col">
     <!-- шапка + навигация -->
-    <div class="flex items-center gap-2 mb-3 shrink-0">
+    <div class="flex flex-wrap items-center gap-2 mb-3 shrink-0">
       <h2 class="text-xl font-bold text-white mr-2">{{ t('files.title') }}</h2>
       <div class="flex gap-1">
         <button @click="goBack" :disabled="historyIdx === 0" class="px-2 py-1.5 rounded-lg bg-ink-850 border border-ink-700 hover:bg-ink-800 disabled:opacity-40 text-sm" :title="t('files.back')">←</button>
@@ -512,7 +514,7 @@ onUnmounted(() => {
     <div v-if="error" class="mb-3 px-4 py-3 rounded-lg bg-bad/10 border border-bad/30 text-bad text-sm shrink-0">{{ error }}</div>
 
     <!-- тулбар -->
-    <div class="flex items-center gap-2 mb-3 shrink-0">
+    <div class="flex flex-wrap items-center gap-2 mb-3 shrink-0">
       <button @click="fileInput?.click()" class="px-3 py-1.5 rounded-lg bg-ink-850 border border-ink-700 hover:bg-ink-800 text-sm">⇧ {{ t('files.upload') }}</button>
       <input ref="fileInput" type="file" multiple class="hidden" @change="onFileChange" />
       <button @click="openCreate('dir')" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm hover:bg-accent-400">＋ {{ t('files.folder') }}</button>
@@ -702,9 +704,9 @@ onUnmounted(() => {
       <div class="card w-full max-w-sm p-5">
         <h3 class="font-semibold text-white mb-4">{{ jobLabel }}…</h3>
         <div class="h-2 rounded-full bg-ink-700 overflow-hidden">
-          <div class="h-full bg-accent-500 transition-all duration-300" :style="{ width: jobProgress + '%' }"></div>
+          <div class="h-full bg-accent-500 transition-all duration-300" :class="{ 'animate-pulse': jobIndeterminate }" :style="{ width: jobIndeterminate ? '100%' : jobProgress + '%' }"></div>
         </div>
-        <div class="mt-2 text-right text-xs font-mono text-slate-500">{{ jobProgress }}%</div>
+        <div class="mt-2 text-right text-xs font-mono text-slate-500">{{ jobIndeterminate ? t('common.loading') : jobProgress + '%' }}</div>
       </div>
     </div>
 

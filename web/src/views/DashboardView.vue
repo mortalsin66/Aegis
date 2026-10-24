@@ -92,6 +92,7 @@ watch(
     netUpHistory.value.push(up.value)
     if (netUpHistory.value.length > 30) netUpHistory.value.shift()
   },
+  { immediate: true },
 )
 
 let listTimer: ReturnType<typeof setInterval> | undefined

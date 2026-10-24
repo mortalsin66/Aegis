@@ -166,7 +166,7 @@ onUnmounted(() => {
             <td class="px-4 py-2.5 font-mono whitespace-nowrap" :class="loadClass(s.load)">{{ s.load }}</td>
             <td class="px-4 py-2.5 font-mono text-slate-500 whitespace-nowrap">{{ s.sub }}</td>
             <td class="px-4 py-2.5 text-right whitespace-nowrap">
-              <button
+              <button v-admin
                 v-if="isRunning(s)"
                 @click="action(s.unit, 'stop')"
                 class="px-2.5 py-1 rounded bg-ink-700 hover:bg-ink-800 text-xs"
@@ -174,7 +174,7 @@ onUnmounted(() => {
               >
                 ⏹
               </button>
-              <button
+              <button v-admin
                 v-else
                 @click="action(s.unit, 'start')"
                 class="px-2.5 py-1 rounded bg-ok/15 text-ok hover:bg-ok/25 text-xs"
@@ -182,7 +182,7 @@ onUnmounted(() => {
               >
                 ▶
               </button>
-              <button
+              <button v-admin
                 @click="action(s.unit, 'restart')"
                 class="px-2.5 py-1 rounded bg-ink-700 hover:bg-ink-800 text-xs ml-1"
                 :title="t('services.restart')"

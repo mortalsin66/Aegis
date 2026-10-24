@@ -68,3 +68,21 @@ test('viewer may read metrics but cannot mutate or read privileged files', async
     assert.equal((await app.inject({ url: '/api/fs/read', headers })).statusCode, 403)
   } finally { delete process.env.AEGIS_VIEWER_USER; delete process.env.AEGIS_VIEWER_PASSWORD; await app.close(); await fs.rm(dir, { recursive: true, force: true }) }
 })
+
+test('logout revokes its own token, survives restart, and preserves another session', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aegis-logout-'))
+  process.env.JWT_SECRET = 'stable-test-signing-key-for-restart'
+  process.env.AEGIS_PASSWORD = 'strong-test-password-123'
+  const app = Fastify(); const auth = await registerAuth(app, dir)
+  try {
+    const login = async () => (await app.inject({ method: 'POST', url: '/api/auth/login', payload: { username: 'admin', password: process.env.AEGIS_PASSWORD } })).json().token
+    const first = await login(), second = await login()
+    assert.notEqual(first, second)
+    assert.equal((await app.inject({ method: 'POST', url: '/api/auth/logout', headers: { authorization: 'Bearer ' + first } })).statusCode, 200)
+    assert.throws(() => auth.verify(first)); assert.equal(auth.verify(second).role, 'admin')
+    await app.close()
+    const other = Fastify(); const restored = await registerAuth(other, dir)
+    assert.throws(() => restored.verify(first)); assert.equal(restored.verify(second).role, 'admin')
+    await other.close()
+  } finally { delete process.env.JWT_SECRET; delete process.env.AEGIS_PASSWORD; await app.close(); await fs.rm(dir, { recursive: true, force: true }) }
+})
