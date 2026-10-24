@@ -5,11 +5,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const headers: Record<string, string> = {
     ...((init?.headers as Record<string, string> | undefined) || {}),
   }
-  if (token.value) headers.Authorization = `Bearer ${token.value}`
+  const sentToken = token.value
+  if (sentToken) headers.Authorization = `Bearer ${sentToken}`
 
-  const r = await fetch(`${agentUrl()}${path}`, { ...init, headers })
+  const r = await fetch(`${agentUrl()}${path}`, { ...init, headers, signal: init?.signal || AbortSignal.timeout(path.startsWith('/api/fs/du') ? 90000 : 30000) })
   if (r.status === 401) {
-    setToken(null)
+    if (token.value === sentToken) setToken(null)
     throw new Error('Требуется авторизация')
   }
   if (!r.ok) {

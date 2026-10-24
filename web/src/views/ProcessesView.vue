@@ -91,13 +91,17 @@ const arrow = (key: 'cpu' | 'mem' | 'pid' | 'name') =>
 
 let timer: ReturnType<typeof setInterval> | undefined
 
+let requestRunning = false
 async function load() {
+  if (document.hidden || requestRunning) return
+  requestRunning = true
   try {
     const res = await apiGet<{ processes: Process[] }>('/api/processes')
     processes.value = res.processes || []
   } catch (e) {
     error.value = (e as Error).message
   } finally {
+    requestRunning = false
     loading.value = false
   }
 }

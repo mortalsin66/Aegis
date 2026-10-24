@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { apiGet, apiPost } from '../lib/api'
+import { setToken } from '../lib/auth'
 
 const emit = defineEmits<{ (e: 'close'): void }>()
 const enabled = ref(false)
@@ -42,7 +43,7 @@ async function confirm() {
   busy.value = true
   error.value = ''
   try {
-    await apiPost('/api/auth/2fa/confirm', { totp: confirmCode.value })
+    const result = await apiPost<{ token: string }>('/api/auth/2fa/confirm', { totp: confirmCode.value }); setToken(result.token)
     enabled.value = true
     pending.value = false
     secret.value = ''
@@ -59,7 +60,7 @@ async function disable() {
   busy.value = true
   error.value = ''
   try {
-    await apiPost('/api/auth/2fa/disable', { totp: disableCode.value })
+    const result = await apiPost<{ token: string }>('/api/auth/2fa/disable', { totp: disableCode.value }); setToken(result.token)
     enabled.value = false
     pending.value = false
     secret.value = ''

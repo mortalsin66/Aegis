@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { apiGet, apiPost } from '../lib/api'
 import { agentUrl } from '../lib/agent'
 import { token } from '../lib/auth'
 import { t } from '../lib/i18n'
 
 const router = useRouter()
+const route = useRoute()
 
 interface FsItem {
   name: string
@@ -69,6 +70,18 @@ const propsGroup = ref('')
 
 // размеры папок (по расчёту)
 const duResults = ref<Record<string, number>>({})
+const duLoading = ref<Record<string, boolean>>({})
+const duErrors = ref<Record<string, string>>({})
+const sizeBatchBusy = ref(false)
+async function calculatePageSizes() {
+  if (sizeBatchBusy.value) return
+  sizeBatchBusy.value = true
+  const base = cwd.value
+  const list = pagedItems.value.filter(item => item.dir)
+  let index = 0
+  try { await Promise.all([0, 1].map(async () => { while (index < list.length && cwd.value === base) await duItem(list[index++]) })) }
+  finally { sizeBatchBusy.value = false }
+}
 
 // прогресс операции
 const jobOpen = ref(false)
@@ -84,7 +97,7 @@ async function trackJob(id: string, label: string) {
   jobTimer = setInterval(async () => {
     try {
       const r = await apiGet<{ status: string; progress: number; error?: string }>(`/api/fs/job/${id}`)
-      jobProgress.value = r.progress || 0
+      jobProgress.value = r.progress || (r.status === 'running' ? 5 : 0)
       if (r.status === 'done') {
         clearInterval(jobTimer)
         jobTimer = undefined
@@ -123,8 +136,8 @@ const visibleItems = computed(() => {
       return a.name.localeCompare(b.name, undefined, { numeric: true }) * dir
     }
     if (sortKey.value === 'size') {
-      const sa = a.dir ? -1 : (a.size ?? -1)
-      const sb = b.dir ? -1 : (b.size ?? -1)
+      const sa = a.dir ? (duResults.value[fullPath(a.name)] ?? -1) : (a.size ?? -1)
+      const sb = b.dir ? (duResults.value[fullPath(b.name)] ?? -1) : (b.size ?? -1)
       return (sa - sb) * dir
     }
     return ((a.mtime ?? 0) - (b.mtime ?? 0)) * dir
@@ -366,13 +379,15 @@ async function extractItem(item: FsItem) {
 }
 async function duItem(item: FsItem) {
   closeCtx()
-  error.value = ''
+  const target = fullPath(item.name)
+  if (duLoading.value[target]) return
+  duLoading.value[target] = true
+  delete duErrors.value[target]
   try {
-    const r = await apiGet<{ size: number }>(`/api/fs/du?path=${encodeURIComponent(fullPath(item.name))}`)
-    duResults.value[item.name] = r.size
-  } catch (e) {
-    error.value = (e as Error).message
-  }
+    const r = await apiGet<{ size: number }>(`/api/fs/du?path=${encodeURIComponent(target)}`)
+    duResults.value[target] = r.size
+  } catch (e) { duErrors.value[target] = (e as Error).message }
+  finally { duLoading.value[target] = false }
 }
 
 function openRename(item: FsItem) {
@@ -457,7 +472,7 @@ function itemAction(item: FsItem, act: string) {
 }
 
 onMounted(() => {
-  load('/')
+  load(typeof route.query.path === 'string' ? route.query.path : '/')
   document.addEventListener('click', closeCtx)
 })
 onUnmounted(() => {
@@ -517,6 +532,7 @@ onUnmounted(() => {
       >
         {{ viewMode === 'list' ? '⊞' : '☰' }}
       </button>
+      <button @click="calculatePageSizes" :disabled="sizeBatchBusy" class="px-3 py-1.5 rounded-lg bg-ink-850 border border-ink-700 text-sm disabled:opacity-50">{{ sizeBatchBusy ? t('common.loading') : t('files.pageSizes') }}</button>
       <span class="text-xs text-slate-500 ml-auto">{{ t('files.selected') }} {{ selectedCount }}</span>
     </div>
 
@@ -550,7 +566,10 @@ onUnmounted(() => {
               <td class="px-4 py-2 font-mono text-white whitespace-nowrap">
                 <span :class="it.dir ? 'text-accent-400' : ''">{{ fileIcon(it.name, it.dir) }}</span> {{ it.name }}{{ it.symlink ? ' ↪' : '' }}
               </td>
-              <td class="px-4 py-2 font-mono text-slate-400 whitespace-nowrap">{{ duResults[it.name] !== undefined ? fmtSize(duResults[it.name], false) : fmtSize(it.size, it.dir) }}</td>
+              <td class="px-4 py-2 font-mono text-slate-400 whitespace-nowrap" @click.stop>
+                <button v-if="it.dir" @click="duItem(it)" :disabled="duLoading[fullPath(it.name)]" :title="duErrors[fullPath(it.name)] || t('files.calculateSize')" class="text-accent-400 hover:underline disabled:opacity-50">{{ duLoading[fullPath(it.name)] ? t('common.loading') : duErrors[fullPath(it.name)] ? t('files.retrySize') : duResults[fullPath(it.name)] !== undefined ? fmtSize(duResults[fullPath(it.name)], false) : t('files.calculateSize') }}</button>
+                <span v-else>{{ fmtSize(it.size, false) }}</span>
+              </td>
               <td class="px-4 py-2 font-mono text-slate-500 whitespace-nowrap" :title="fmtModeNum(it.mode)">{{ fmtMode(it.mode, it.dir) }}</td>
               <td class="px-4 py-2 text-slate-500 whitespace-nowrap">{{ fmtDate(it.mtime) }}</td>
             </tr>
@@ -570,6 +589,7 @@ onUnmounted(() => {
           >
             <span class="text-3xl">{{ fileIcon(it.name, it.dir) }}</span>
             <span class="text-xs text-slate-300 text-center break-all line-clamp-2">{{ it.name }}</span>
+            <button v-if="it.dir" @click.stop="duItem(it)" :disabled="duLoading[fullPath(it.name)]" class="text-[11px] text-accent-400" :title="duErrors[fullPath(it.name)]">{{ duLoading[fullPath(it.name)] ? '…' : duResults[fullPath(it.name)] !== undefined ? fmtSize(duResults[fullPath(it.name)], false) : t('files.calculateSize') }}</button>
           </div>
           <div v-if="!pagedItems.length" class="col-span-full text-center text-slate-500 py-6">{{ t('files.empty') }}</div>
         </div>

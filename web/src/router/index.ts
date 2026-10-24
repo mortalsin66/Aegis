@@ -31,6 +31,7 @@ export const nav: NavItem[] = [
   { id: 'logs', icon: '≡', label: 'Журнал', path: '/logs' },
   { id: 'users', icon: '◉', label: 'Пользователи', path: '/users' },
   { id: 'updates', icon: '⇪', label: 'Обновления', path: '/updates' },
+  { id: 'audit', icon: '≡', label: 'Действия', path: '/audit' },
   { id: 'settings', icon: '✶', label: 'Настройки', path: '/settings' },
 ]
 
@@ -45,6 +46,7 @@ const sectionComponent: Record<string, RouteRecordRaw['component']> = {
   updates: UpdatesView,
   terminal: TerminalView,
   settings: SettingsView,
+  audit: () => import('../views/AuditView.vue'),
 }
 
 const router = createRouter({

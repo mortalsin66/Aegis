@@ -38,7 +38,10 @@ function fmtUptime(sec: number) {
   return `${m} ${t('updates.unit.min')}`
 }
 
+let requestRunning = false
 async function load() {
+  if (document.hidden || requestRunning) return
+  requestRunning = true
   error.value = ''
   loading.value = true
   try {
@@ -50,6 +53,7 @@ async function load() {
   } catch (e) {
     error.value = (e as Error).message
   } finally {
+    requestRunning = false
     loading.value = false
   }
 }

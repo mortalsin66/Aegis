@@ -62,7 +62,7 @@ async function changePassword() {
     error.value = t('settings.passwordsMismatch')
     return
   }
-  if (newPw.value.length < 4) {
+  if (newPw.value.length < 12) {
     error.value = t('settings.passwordTooShort')
     return
   }
@@ -79,7 +79,7 @@ async function changePassword() {
       error.value = (data && data.error) || t('login.error')
       return
     }
-    setToken(pendingToken.value)
+    setToken(data.token)
   } catch (e) {
     error.value = (e as Error).message
   } finally {

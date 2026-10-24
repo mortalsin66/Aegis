@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { apiGet } from '../lib/api'
 import { t } from '../lib/i18n'
+import { useRoute } from 'vue-router'
 import SelectDropdown from '../components/SelectDropdown.vue'
 
 interface LogEntry {
@@ -15,7 +16,8 @@ const logs = ref<LogEntry[]>([])
 const loading = ref(true)
 const error = ref('')
 const note = ref('')
-const unit = ref('')
+const route = useRoute()
+const unit = ref(typeof route.query.unit === 'string' ? route.query.unit : '')
 const level = ref('all')
 const lines = ref('200')
 const follow = ref(false)
@@ -55,7 +57,10 @@ function fmtTs(ts: number | null) {
 
 let timer: ReturnType<typeof setInterval> | undefined
 
+let requestRunning = false
 async function load() {
+  if (document.hidden || requestRunning) return
+  requestRunning = true
   try {
     const res = await apiGet<{ logs: LogEntry[]; note?: string; error?: string }>(
       `/api/logs?lines=${lines.value}&unit=${encodeURIComponent(unit.value)}`,
@@ -66,6 +71,7 @@ async function load() {
   } catch (e) {
     error.value = (e as Error).message
   } finally {
+    requestRunning = false
     loading.value = false
   }
 }
