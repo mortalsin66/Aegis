@@ -11,6 +11,7 @@ import {
   Tooltip,
 } from 'chart.js'
 import { t } from '../lib/i18n'
+import { formatNetworkRate } from '../lib/network-rate'
 import { apiGet } from '../lib/api'
 
 Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip)
@@ -21,6 +22,12 @@ const ranges = ['1m', '15m', '1h', '6h', '12h', '24h']
 const loading = ref(false)
 const metric = ref<'cpu' | 'mem' | 'disk' | 'rx' | 'tx'>('cpu')
 const metrics = ['cpu', 'mem', 'disk', 'rx', 'tx'] as const
+
+function formatValue(value: number): string {
+  if (metric.value !== 'rx' && metric.value !== 'tx') return value.toFixed(1) + '%'
+  const rate = formatNetworkRate(value)
+  return rate.value + ' ' + t(rate.unitKey)
+}
 
 let chart: Chart | null = null
 let timer: ReturnType<typeof setInterval> | undefined
@@ -36,7 +43,7 @@ async function load() {
     const labels = points.map((p) =>
       new Date(p.t).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
     )
-    const data = points.map((p) => p[metric.value] / (metric.value === 'rx' || metric.value === 'tx' ? 1024 ** 2 : 1))
+    const data = points.map((p) => p[metric.value])
 
     if (!chart) {
       chart = new Chart(canvasEl.value, {
@@ -71,7 +78,7 @@ async function load() {
               titleColor: '#94a3b8',
               bodyColor: '#e2e8f0',
               padding: 10,
-              callbacks: { label: (ctx) => ` ${(ctx.parsed.y ?? 0).toFixed(1)} ${metric.value === 'rx' || metric.value === 'tx' ? 'MiB/s' : '%'}` },
+              callbacks: { label: (ctx) => formatValue(ctx.parsed.y ?? 0) },
             },
           },
           scales: {
@@ -82,7 +89,7 @@ async function load() {
             y: {
               min: 0,
               suggestedMax: metric.value === 'rx' || metric.value === 'tx' ? undefined : 100,
-              ticks: { color: '#64748b', callback: (v) => v + (metric.value === 'rx' || metric.value === 'tx' ? ' MiB/s' : '%') },
+              ticks: { color: '#64748b', callback: (v) => formatValue(Number(v)) },
               grid: { color: 'rgba(148,163,184,0.06)' },
             },
           },

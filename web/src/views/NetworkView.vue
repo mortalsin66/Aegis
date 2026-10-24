@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { formatNetworkRate } from '../lib/network-rate'
 import { apiGet, apiPost } from '../lib/api'
 import { t } from '../lib/i18n'
 import SelectDropdown from '../components/SelectDropdown.vue'
@@ -268,7 +269,7 @@ async function saveDns() {
   }
 }
 
-const fmtRate = (b: number) => (b / (1024 * 1024)).toFixed(1) + ' ' + t('network.rateUnit')
+const fmtRate = (b: number) => { const rate = formatNetworkRate(b); return rate.value + ' ' + t(rate.unitKey) }
 </script>
 
 <template>

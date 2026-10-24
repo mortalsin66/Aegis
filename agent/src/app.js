@@ -15,6 +15,7 @@ import fsSync from 'node:fs'
 import { parse } from 'shell-quote'
 import { registerAuth } from './lib/auth.js'
 import { command, identifier, dimensions } from './lib/commands.js'
+import { networkMetric } from './lib/network.js'
 import { cached, ExpiringJobs } from './lib/cache.js'
 import { startUpdate } from './lib/updater.js'
 import { MetricHistory, atomicJson, loadJson, folderSizes } from './lib/storage.js'
@@ -36,12 +37,13 @@ const WEB_DIST = process.env.WEB_DIST || path.resolve(__dirname, '../../web/dist
 const METRICS_INTERVAL = Math.max(1000, Math.min(60000, Number(process.env.METRICS_INTERVAL) || 2000))
 
 // версия панели и GitHub-репозиторий для обновлений
+const PACKAGE_VERSION = JSON.parse(fsSync.readFileSync(path.resolve(__dirname, '../package.json'), 'utf8')).version
 const PANEL_VERSION = (() => {
   try {
     const v = fsSync.readFileSync('/opt/aegis/.aegis-version', 'utf8').trim()
-    return v || '1.1.0'
+    return v || PACKAGE_VERSION
   } catch {
-    return '1.1.0'
+    return PACKAGE_VERSION
   }
 })()
 const GITHUB_REPO = 'mortalsin66/Aegis'
@@ -126,15 +128,15 @@ app.addHook('preValidation', async (req, reply) => {
 })
 
 // ===================== МЕТРИКИ =====================
+const getNetworkStats = cached(() => si.networkStats('*'), METRICS_INTERVAL)
 const getMetrics = cached(async () => {
   const [load, mem, disk, net] = await Promise.all([
     si.currentLoad(),
     si.mem(),
     si.fsSize(),
-    si.networkStats(),
+    getNetworkStats(),
   ])
   const defaultIface = await si.networkInterfaceDefault()
-  const iface = net.find(i => i.iface === defaultIface) || net.find(i => i.iface !== 'lo') || net[0] || {}
   return {
     cpu: Math.round((load.currentLoad || 0) * 10) / 10,
     cpuCores: (load.cpus || []).length,
@@ -146,7 +148,7 @@ const getMetrics = cached(async () => {
       usedPct: mem.total ? Math.round((mem.active / mem.total) * 1000) / 10 : 0,
     },
     disk: (disk || []).map((d) => ({ fs: d.fs, mount: d.mount, size: d.size, used: d.used, use: d.use })),
-    net: { iface: iface.iface || '—', rx: iface.rx_sec || 0, tx: iface.tx_sec || 0 },
+    net: networkMetric(net, defaultIface),
     timestamp: Date.now(),
   }
 }, METRICS_INTERVAL)
@@ -625,7 +627,7 @@ app.get('/api/logs', async (req) => {
 
 // ===================== СЕТЬ =====================
 app.get('/api/network/interfaces', async () => {
-  const [ifs, stats] = await Promise.all([si.networkInterfaces(), si.networkStats()])
+  const [ifs, stats] = await Promise.all([si.networkInterfaces(), getNetworkStats()])
   const statMap = {}
   ;(stats || []).forEach((s) => {
     statMap[s.iface] = s
