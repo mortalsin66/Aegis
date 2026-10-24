@@ -91,13 +91,17 @@ const arrow = (key: 'cpu' | 'mem' | 'pid' | 'name') =>
 
 let timer: ReturnType<typeof setInterval> | undefined
 
+let requestRunning = false
 async function load() {
+  if (document.hidden || requestRunning) return
+  requestRunning = true
   try {
     const res = await apiGet<{ processes: Process[] }>('/api/processes')
     processes.value = res.processes || []
   } catch (e) {
     error.value = (e as Error).message
   } finally {
+    requestRunning = false
     loading.value = false
   }
 }
@@ -189,7 +193,7 @@ onUnmounted(() => {
               </div>
             </td>
             <td class="px-4 py-2.5 text-right">
-              <button @click="kill(p.pid)" class="px-2.5 py-1 rounded bg-ink-700 hover:bg-bad/20 hover:text-bad text-xs">⊘ {{ t('processes.kill') }}</button>
+              <button v-admin @click="kill(p.pid)" class="px-2.5 py-1 rounded bg-ink-700 hover:bg-bad/20 hover:text-bad text-xs">⊘ {{ t('processes.kill') }}</button>
             </td>
           </tr>
           <tr v-if="!filtered.length">

@@ -28,7 +28,7 @@
 }
 @font-face {
   font-family: 'Monocraft';
-  src: url('./assets/fonts/Monocraft.ttc') format('collection');
+  src: url('./assets/fonts/Monocraft.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;

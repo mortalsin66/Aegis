@@ -43,7 +43,7 @@ let notifTimer: ReturnType<typeof setInterval> | undefined
 const osLine = computed(() =>
   state.system
     ? `${state.system.distro} ${state.system.release} · ${state.system.kernel}`
-    : 'Ubuntu 22.04 LTS · 5.15.0-91-generic',
+    : t('common.loading'),
 )
 
 const updateCount = computed(() => {
@@ -138,7 +138,7 @@ function onDocClick() {
 onMounted(() => {
   loadNotifications()
   fetchSearchData()
-  notifTimer = setInterval(loadNotifications, 60000)
+  notifTimer = setInterval(() => { if (!document.hidden) loadNotifications() }, 60000)
   document.addEventListener('click', onDocClick)
 })
 onUnmounted(() => {
@@ -154,7 +154,7 @@ onUnmounted(() => {
     </button>
     <div class="flex items-center gap-2 min-w-0">
       <span class="w-2.5 h-2.5 rounded-full animate-pulse shrink-0" :class="state.connected ? 'bg-ok' : 'bg-slate-600'"></span>
-      <span class="text-sm font-semibold text-white truncate">{{ state.system?.hostname || 'prod-01' }}</span>
+      <span class="text-sm font-semibold text-white truncate">{{ state.system?.hostname || '…' }}</span>
       <span class="text-xs text-slate-500 hidden lg:inline">{{ osLine }}</span>
     </div>
 

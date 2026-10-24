@@ -41,18 +41,18 @@ const editing = ref(false)
 const showPalette = ref(false)
 let nextId = 100
 
-// ---- живые метрики (пока мок, позже WebSocket) ----
-const cpu = ref(23.4)
-const mem = ref(7.2)
-const disk = ref(61.8)
-const dn = ref(24.6)
-const up = ref(8.1)
+// Live metrics; missing data is never replaced with synthetic values.
+const cpu = ref(0)
+const mem = ref(0)
+const disk = ref(0)
+const dn = ref(0)
+const up = ref(0)
 const { state: agent } = useAgent()
-const memTotalGb = ref(16)
-const cpuHistory = ref<number[]>(Array.from({ length: 30 }, () => 20 + Math.random() * 45))
-const memHistory = ref<number[]>(Array.from({ length: 20 }, () => 6 + Math.random() * 4))
-const netDownHistory = ref<number[]>(Array.from({ length: 24 }, () => 3 + Math.random() * 30))
-const netUpHistory = ref<number[]>(Array.from({ length: 24 }, () => 1 + Math.random() * 10))
+const memTotalGb = ref(0)
+const cpuHistory = ref<number[]>([])
+const memHistory = ref<number[]>([])
+const netDownHistory = ref<number[]>([])
+const netUpHistory = ref<number[]>([])
 const memPct = computed(() => (memTotalGb.value ? Math.round((mem.value / memTotalGb.value) * 100) : 0))
 const memDash = computed(() => `${(memPct.value * 2.64).toFixed(1)} 264`)
 
@@ -71,85 +71,48 @@ const rootDisk = computed(() => {
   return disks.find((d) => d.mount === '/') || disks[0] || null
 })
 
-// реальные метрики с агента (WebSocket) подменяют мок
+// Update only from authenticated agent metrics.
 watch(
   () => agent.metrics,
   (m) => {
     if (!m) return
     cpu.value = m.cpu
     mem.value = m.mem.used / 1e9
-    memTotalGb.value = Math.round(m.mem.total / 1e9)
+    memTotalGb.value = m.mem.total / 1e9
     const rootD = (m.disk || []).find((d) => d.mount === '/') || (m.disk || [])[0]
     disk.value = rootD?.use ?? disk.value
     dn.value = m.net.rx / (1024 ** 2)
     up.value = m.net.tx / (1024 ** 2)
     cpuHistory.value.push(cpu.value)
-    cpuHistory.value.shift()
+    if (cpuHistory.value.length > 30) cpuHistory.value.shift()
     memHistory.value.push(mem.value)
-    memHistory.value.shift()
+    if (memHistory.value.length > 30) memHistory.value.shift()
     netDownHistory.value.push(dn.value)
-    netDownHistory.value.shift()
+    if (netDownHistory.value.length > 30) netDownHistory.value.shift()
     netUpHistory.value.push(up.value)
-    netUpHistory.value.shift()
+    if (netUpHistory.value.length > 30) netUpHistory.value.shift()
   },
+  { immediate: true },
 )
 
-let timer: ReturnType<typeof setInterval> | undefined
 let listTimer: ReturnType<typeof setInterval> | undefined
-function tick() {
-  if (agent.connected) return // при подключённом агенте данные идут по WebSocket
-  cpu.value = 8 + Math.random() * 70
-  mem.value = 6 + Math.random() * 5
-  disk.value = 58 + Math.random() * 8
-  dn.value = 5 + Math.random() * 85
-  up.value = 2 + Math.random() * 38
-  cpuHistory.value.push(cpu.value)
-  cpuHistory.value.shift()
-  memHistory.value.push(mem.value)
-  memHistory.value.shift()
-  netDownHistory.value.push(dn.value)
-  netDownHistory.value.shift()
-  netUpHistory.value.push(up.value)
-  netUpHistory.value.shift()
-}
-onMounted(() => {
-  timer = setInterval(tick, 2000)
-  loadLists()
-  listTimer = setInterval(loadLists, 15000)
-})
-onUnmounted(() => {
-  if (timer) clearInterval(timer)
-  if (listTimer) clearInterval(listTimer)
-})
+let listsLoading = false
+onMounted(() => { loadLists(); listTimer = setInterval(() => { if (!document.hidden) loadLists() }, 15000) })
+onUnmounted(() => { if (listTimer) clearInterval(listTimer) })
 
-// ---- списки (реальные данные с агента, мок — фолбэк) ----
-const services = ref<[string, string, string, string, string][]>([
-  ['running', 'nginx', 'Веб-сервер', '0.2%', '28 МБ'],
-  ['running', 'postgresql', 'База данных', '4.8%', '512 МБ'],
-  ['running', 'docker', 'Движок контейнеров', '0.5%', '96 МБ'],
-  ['running', 'sshd', 'SSH-сервер', '0.0%', '12 МБ'],
-  ['running', 'redis-server', 'Кэш / очередь', '0.1%', '24 МБ'],
-])
-const processes = ref<[string, string, string, number][]>([
-  ['1241', 'postgres', 'postgres', 4.8],
-  ['892', 'www-data', 'nginx', 2.1],
-  ['1530', 'redis', 'redis-server', 0.9],
-  ['311', 'root', 'dockerd', 1.7],
-  ['2602', 'ubuntu', 'node', 3.4],
-])
-const events = ref<[string, string, string][]>([
-  ['12:40:05', 'warn', 'systemd: mystery-app failed'],
-  ['12:40:22', 'info', 'sshd: accepted publickey'],
-  ['12:41:02', 'info', 'nginx: 200 GET /'],
-  ['12:41:40', 'error', 'postgres: connection timeout'],
-])
+// Live service, process, and event lists.
+const services = ref<[string, string, string, string, string][]>([])
+const processes = ref<[string, string, string, number][]>([])
+const events = ref<[string, string, string][]>([])
 
 async function loadLists() {
+  if (listsLoading) return
+  listsLoading = true
   try {
     const r = await apiGet<{ services: { unit: string; active: string; description: string }[]; note?: string }>(
       '/api/services',
     )
-    if (!r.note && r.services?.length) {
+    if (!r.note && r.services) {
       services.value = r.services.slice(0, 6).map((s) => {
         const clean = s.unit.replace(/\.service$/, '')
         return [
@@ -162,12 +125,12 @@ async function loadLists() {
       })
     }
   } catch {
-    /* нет данных — остаётся мок */
+    /* Keep last received data. */
   }
 
   try {
     const r = await apiGet<{ processes: { pid: number; user: string; name: string; cpu: number }[] }>('/api/processes')
-    if (r.processes?.length) {
+    if (r.processes) {
       processes.value = r.processes
         .slice(0, 5)
         .map((p) => [String(p.pid), p.user || '', p.name, p.cpu || 0] as [string, string, string, number])
@@ -180,7 +143,7 @@ async function loadLists() {
     const r = await apiGet<{ logs: { ts: number | null; level: string; message: string }[]; note?: string }>(
       '/api/logs?lines=20',
     )
-    if (!r.note && r.logs?.length) {
+    if (!r.note && r.logs) {
       events.value = r.logs
         .slice(0, 5)
         .map((l) => [l.ts ? new Date(l.ts).toISOString().slice(11, 19) : '', l.level, l.message] as [string, string, string])
@@ -188,6 +151,7 @@ async function loadLists() {
   } catch {
     /* нет данных */
   }
+  listsLoading = false
 }
 
 const svcDot = (s: string) =>
@@ -195,6 +159,7 @@ const svcDot = (s: string) =>
 
 // ---- SVG-хелперы для графиков ----
 function linePoints(data: number[], w: number, h: number): string {
+  if (data.length < 2) return ''
   return data
     .map((v, i) => `${((i / (data.length - 1)) * w).toFixed(1)},${(h - (v / 100) * h).toFixed(1)}`)
     .join(' ')
@@ -204,6 +169,7 @@ const memSpark = computed(() => linePoints(memHistory.value, 100, 40))
 
 function linePointsAuto(data: number[], w: number, h: number): string {
   const max = Math.max(...data, 1)
+  if (data.length < 2) return ''
   return data
     .map((v, i) => `${((i / (data.length - 1)) * w).toFixed(1)},${(h - (v / max) * h).toFixed(1)}`)
     .join(' ')
@@ -256,6 +222,7 @@ const palette = computed<{ type: WidgetType; label: string }[]>(() => [
 
 <template>
   <div>
+    <div v-if="!agent.metrics || !agent.connected" class="mb-3 p-3 rounded-lg bg-warn/10 text-warn text-sm">{{ t('monitor.offline') }} <span v-if="agent.metrics">{{ new Date(agent.metrics.timestamp).toLocaleString() }}</span></div>
     <div class="flex items-center justify-between mb-4">
       <div>
         <h2 class="text-xl font-bold text-white">{{ t('dashboard.title') }}</h2>
@@ -265,7 +232,7 @@ const palette = computed<{ type: WidgetType; label: string }[]>(() => [
       </div>
     </div>
 
-    <div class="dash-grid" @dragover.prevent>
+    <div v-if="agent.metrics" class="dash-grid" @dragover.prevent>
       <div
         v-for="w in widgets"
         :key="w.id"
@@ -310,11 +277,11 @@ const palette = computed<{ type: WidgetType; label: string }[]>(() => [
         <template v-else-if="w.type === 'mem'">
           <div class="flex items-center justify-between">
             <span class="text-sm text-slate-400">{{ t('dashboard.memory') }}</span>
-            <span class="text-[10px] font-mono text-slate-500">{{ memTotalGb }} {{ t('dashboard.gb') }}</span>
+            <span class="text-[10px] font-mono text-slate-500">{{ memTotalGb.toFixed(1) }} {{ t('dashboard.gb') }}</span>
           </div>
           <div class="mt-2 flex items-end gap-2">
             <span class="text-3xl font-bold font-mono text-white">{{ mem.toFixed(1) }}</span>
-            <span class="text-slate-500 mb-1">/ {{ memTotalGb }} {{ t('dashboard.gb') }}</span>
+            <span class="text-slate-500 mb-1">/ {{ memTotalGb.toFixed(1) }} {{ t('dashboard.gb') }}</span>
           </div>
           <svg viewBox="0 0 100 40" class="w-full h-10 mt-1" preserveAspectRatio="none">
             <polyline :points="memSpark" fill="none" stroke="#34d399" stroke-width="1.5" />
@@ -345,7 +312,7 @@ const palette = computed<{ type: WidgetType; label: string }[]>(() => [
         <template v-else-if="w.type === 'net'">
           <div class="flex items-center justify-between">
             <span class="text-sm text-slate-400">{{ t('dashboard.network') }}</span>
-            <span class="text-[10px] font-mono text-slate-500">eth0</span>
+            <span class="text-[10px] font-mono text-slate-500">{{ agent.metrics?.net.iface || '…' }}</span>
           </div>
           <div class="mt-2 flex items-end gap-2">
             <span class="text-3xl font-bold font-mono text-white">{{ dn.toFixed(1) }}</span>

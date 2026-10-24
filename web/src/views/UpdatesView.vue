@@ -38,7 +38,10 @@ function fmtUptime(sec: number) {
   return `${m} ${t('updates.unit.min')}`
 }
 
+let requestRunning = false
 async function load() {
+  if (document.hidden || requestRunning) return
+  requestRunning = true
   error.value = ''
   loading.value = true
   try {
@@ -50,6 +53,7 @@ async function load() {
   } catch (e) {
     error.value = (e as Error).message
   } finally {
+    requestRunning = false
     loading.value = false
   }
 }
@@ -116,10 +120,10 @@ onUnmounted(() => {
         <button @click="load" class="px-3 py-1.5 rounded-lg bg-ink-850 border border-ink-700 hover:bg-ink-800 text-sm">
           <span class="inline-block" :class="loading ? 'animate-spin' : ''">↻</span> {{ t('updates.check') }}
         </button>
-        <button @click="refreshLists" class="px-3 py-1.5 rounded-lg bg-ink-850 border border-ink-700 hover:bg-ink-800 text-sm" :title="t('updates.refreshListsTitle')">
+        <button v-admin @click="refreshLists" class="px-3 py-1.5 rounded-lg bg-ink-850 border border-ink-700 hover:bg-ink-800 text-sm" :title="t('updates.refreshListsTitle')">
           🔄 {{ t('updates.refreshLists') }}
         </button>
-        <button
+        <button v-admin
           @click="apply"
           :disabled="!updates.length || updating"
           class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm hover:bg-accent-400 disabled:opacity-50 disabled:cursor-not-allowed"

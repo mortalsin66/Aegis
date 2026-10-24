@@ -345,7 +345,7 @@ const fmtRate = (b: number) => (b / (1024 * 1024)).toFixed(1) + ' ' + t('network
                 <span class="font-mono">{{ name }}</span>
               </div>
               <div class="flex items-center gap-2">
-                <button
+                <button v-admin
                   v-if="fw?.firewalls?.[key]?.installed"
                   @click="toggleFw(key, !fw.firewalls[key].active)"
                   class="relative w-10 h-6 rounded-full transition-colors shrink-0"
@@ -356,7 +356,7 @@ const fmtRate = (b: number) => (b / (1024 * 1024)).toFixed(1) + ' ' + t('network
                 </button>
                 <span v-if="fw?.firewalls?.[key]?.active" class="text-xs text-ok">{{ t('network.on') }}</span>
                 <span v-else-if="fw?.firewalls?.[key]?.installed" class="text-xs text-slate-500">{{ t('network.off') }}</span>
-                <button v-if="!fw?.firewalls?.[key]?.installed && (key === 'ufw' || key === 'firewalld')" class="text-xs px-2 py-1 rounded bg-accent-500 text-ink-950 font-semibold" @click="installFw(key)">{{ t('network.install') }}</button>
+                <button v-admin v-if="!fw?.firewalls?.[key]?.installed && (key === 'ufw' || key === 'firewalld')" class="text-xs px-2 py-1 rounded bg-accent-500 text-ink-950 font-semibold" @click="installFw(key)">{{ t('network.install') }}</button>
               </div>
             </div>
           </div>
@@ -377,7 +377,7 @@ const fmtRate = (b: number) => (b / (1024 * 1024)).toFixed(1) + ' ' + t('network
             <input v-model="fwPort" :placeholder="viewFw === 'ufw' ? t('network.portPlaceholderUfw') : t('network.portPlaceholder')" class="bg-ink-850 border border-ink-700 rounded-lg px-3 py-1.5 text-sm w-44 focus:outline-none focus:border-accent-500" />
             <SelectDropdown v-if="viewFw === 'ufw'" v-model="fwProto" :options="protoOptions" />
             <input v-if="viewFw === 'ufw'" v-model="fwFrom" :placeholder="t('network.fromPlaceholder')" class="bg-ink-850 border border-ink-700 rounded-lg px-3 py-1.5 text-sm w-40 focus:outline-none focus:border-accent-500" />
-            <button @click="addFwRule" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">{{ t('network.add') }}</button>
+            <button v-admin @click="addFwRule" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">{{ t('network.add') }}</button>
           </div>
 
           <div v-if="viewFw === 'ufw' && fw?.firewalls?.ufw?.policy" class="flex items-center gap-3 mb-4 text-sm flex-wrap">
@@ -394,13 +394,13 @@ const fmtRate = (b: number) => (b / (1024 * 1024)).toFixed(1) + ' ' + t('network
 
           <div v-if="viewFw === 'iptables'" class="flex items-center justify-between mb-3 text-xs">
             <span class="text-warn">{{ t('network.iptablesResetWarning') }}</span>
-            <button @click="saveIptables" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">{{ t('network.save') }}</button>
+            <button v-admin @click="saveIptables" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">{{ t('network.save') }}</button>
           </div>
 
           <div class="space-y-1.5 font-mono text-sm max-h-96 overflow-y-auto">
             <div v-for="(r, i) in fw?.firewalls?.[viewFw]?.rules || []" :key="i" class="flex items-center justify-between bg-ink-850 rounded-lg px-3 py-2">
               <span class="break-all">{{ r }}</span>
-              <button v-if="viewFw === 'ufw' || viewFw === 'iptables'" @click="deleteFwRule(r)" class="ml-2 shrink-0 text-xs px-2 py-1 rounded bg-bad/15 text-bad hover:bg-bad/25">{{ t('network.delete') }}</button>
+              <button v-admin v-if="viewFw === 'ufw' || viewFw === 'iptables'" @click="deleteFwRule(r)" class="ml-2 shrink-0 text-xs px-2 py-1 rounded bg-bad/15 text-bad hover:bg-bad/25">{{ t('network.delete') }}</button>
             </div>
             <div v-if="!fw?.firewalls?.[viewFw]?.rules?.length" class="text-slate-500">{{ t('network.noRules') }}</div>
           </div>
@@ -416,7 +416,7 @@ const fmtRate = (b: number) => (b / (1024 * 1024)).toFixed(1) + ' ' + t('network
             <input v-model="rtGateway" :placeholder="t('network.gateway')" class="bg-ink-850 border border-ink-700 rounded-lg px-3 py-1.5 text-sm w-32 focus:outline-none focus:border-accent-500" />
             <input v-model="rtIface" :placeholder="t('network.interface')" class="bg-ink-850 border border-ink-700 rounded-lg px-3 py-1.5 text-sm w-32 focus:outline-none focus:border-accent-500" />
             <input v-model="rtMetric" :placeholder="t('network.metric')" class="bg-ink-850 border border-ink-700 rounded-lg px-3 py-1.5 text-sm w-24 focus:outline-none focus:border-accent-500" />
-            <button @click="addRoute" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">{{ t('network.add') }}</button>
+            <button v-admin @click="addRoute" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">{{ t('network.add') }}</button>
           </div>
         </div>
         <table class="w-full text-sm">
@@ -429,7 +429,7 @@ const fmtRate = (b: number) => (b / (1024 * 1024)).toFixed(1) + ' ' + t('network
               <td class="px-4 py-2.5 font-mono">{{ r.gateway || '—' }}</td>
               <td class="px-4 py-2.5 font-mono">{{ r.iface || '—' }}</td>
               <td class="px-4 py-2.5 font-mono text-slate-500">{{ r.metric || '—' }}</td>
-              <td class="px-4 py-2.5 text-right"><button @click="deleteRoute(r)" class="text-xs px-2 py-1 rounded bg-bad/15 text-bad hover:bg-bad/25">{{ t('network.delete') }}</button></td>
+              <td class="px-4 py-2.5 text-right"><button v-admin @click="deleteRoute(r)" class="text-xs px-2 py-1 rounded bg-bad/15 text-bad hover:bg-bad/25">{{ t('network.delete') }}</button></td>
             </tr>
             <tr v-if="!routes.length"><td colspan="5" class="px-4 py-6 text-center text-slate-500">{{ t('network.loading') }}</td></tr>
           </tbody>
@@ -444,14 +444,14 @@ const fmtRate = (b: number) => (b / (1024 * 1024)).toFixed(1) + ' ' + t('network
           <div class="space-y-2 font-mono text-sm mb-4">
             <div v-for="(s, i) in dnsList" :key="i" class="flex items-center justify-between bg-ink-850 rounded-lg px-3 py-2">
               <span>{{ s }}</span>
-              <button @click="removeDnsServer(i)" class="text-xs px-2 py-1 rounded bg-bad/15 text-bad hover:bg-bad/25">×</button>
+              <button v-admin @click="removeDnsServer(i)" class="text-xs px-2 py-1 rounded bg-bad/15 text-bad hover:bg-bad/25">×</button>
             </div>
             <div v-if="!dnsList.length" class="text-slate-500">{{ t('network.noDnsServers') }}</div>
           </div>
           <div class="flex gap-2">
             <input v-model="dnsInput" @keyup.enter="addDnsServer" placeholder="1.1.1.1" class="flex-1 bg-ink-850 border border-ink-700 rounded-lg px-3 py-1.5 text-sm font-mono focus:outline-none focus:border-accent-500" />
-            <button @click="addDnsServer" class="px-3 py-1.5 rounded-lg bg-ink-850 border border-ink-700 hover:bg-ink-800 text-sm">＋</button>
-            <button @click="saveDns" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">{{ t('network.save') }}</button>
+            <button v-admin @click="addDnsServer" class="px-3 py-1.5 rounded-lg bg-ink-850 border border-ink-700 hover:bg-ink-800 text-sm">＋</button>
+            <button v-admin @click="saveDns" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">{{ t('network.save') }}</button>
           </div>
         </div>
         <div class="card p-5">

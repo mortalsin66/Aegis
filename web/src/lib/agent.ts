@@ -27,6 +27,7 @@ export interface SystemInfo {
 
 const state = reactive({
   connected: false,
+  lastError: '',
   metrics: null as Metrics | null,
   system: null as SystemInfo | null,
 })
@@ -50,6 +51,7 @@ export function connectAgent(url = agentUrl()): void {
     socket.on('connect', () => {
       state.connected = true
     })
+    socket.on('connect_error', (e) => { state.connected = false; state.lastError = e.message })
     socket.on('disconnect', () => {
       state.connected = false
     })

@@ -1,3 +1,4 @@
+import { role } from '../lib/auth'
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 
 const DashboardView = () => import('../views/DashboardView.vue')
@@ -31,6 +32,7 @@ export const nav: NavItem[] = [
   { id: 'logs', icon: '≡', label: 'Журнал', path: '/logs' },
   { id: 'users', icon: '◉', label: 'Пользователи', path: '/users' },
   { id: 'updates', icon: '⇪', label: 'Обновления', path: '/updates' },
+  { id: 'audit', icon: '≡', label: 'Действия', path: '/audit' },
   { id: 'settings', icon: '✶', label: 'Настройки', path: '/settings' },
 ]
 
@@ -45,6 +47,7 @@ const sectionComponent: Record<string, RouteRecordRaw['component']> = {
   updates: UpdatesView,
   terminal: TerminalView,
   settings: SettingsView,
+  audit: () => import('../views/AuditView.vue'),
 }
 
 const router = createRouter({
@@ -66,5 +69,7 @@ const router = createRouter({
       })),
   ],
 })
+
+router.beforeEach(to => role.value === 'viewer' && ['/files', '/terminal', '/users', '/settings', '/audit'].includes(to.path) ? '/' : true)
 
 export default router

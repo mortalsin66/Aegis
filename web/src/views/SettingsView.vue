@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { apiGet, apiPost } from '../lib/api'
+import ServerProfiles from '../components/ServerProfiles.vue'
 import QRCode from 'qrcode'
 import { t } from '../lib/i18n'
+import { setToken } from '../lib/auth'
 
 const settings = ref<{ port: number; user: string; twoFactor: boolean; twoFactorPending: boolean } | null>(null)
 const error = ref('')
@@ -43,12 +45,12 @@ async function changePassword() {
     error.value = t('settings.passwordsMismatch')
     return
   }
-  if (pwNext.value.length < 4) {
+  if (pwNext.value.length < 12) {
     error.value = t('settings.passwordTooShort')
     return
   }
   try {
-    await apiPost('/api/auth/password', { current: pwCurrent.value, next: pwNext.value })
+    const result = await apiPost<{ token: string }>('/api/auth/password', { current: pwCurrent.value, next: pwNext.value }); setToken(result.token)
     pwCurrent.value = ''
     pwNext.value = ''
     pwConfirm.value = ''
@@ -91,7 +93,7 @@ async function setup2fa() {
 async function confirm2fa() {
   error.value = ''
   try {
-    await apiPost('/api/auth/2fa/confirm', { totp: totpCode.value })
+    const result = await apiPost<{ token: string }>('/api/auth/2fa/confirm', { totp: totpCode.value }); setToken(result.token)
     secret2.value = ''
     qrUrl.value = ''
     totpCode.value = ''
@@ -110,7 +112,7 @@ async function disable2fa() {
     return
   }
   try {
-    await apiPost('/api/auth/2fa/disable', { totp: disableCode.value })
+    const result = await apiPost<{ token: string }>('/api/auth/2fa/disable', { totp: disableCode.value }); setToken(result.token)
     disableCode.value = ''
     note.value = t('twofaDisabled')
     setTimeout(() => (note.value = ''), 3000)
@@ -205,6 +207,7 @@ onUnmounted(() => {
 
     <div class="card flex-1 min-h-0 overflow-y-auto">
       <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 p-5">
+        <ServerProfiles />
         <!-- УЧЁТНЫЕ ДАННЫЕ -->
         <div class="space-y-3">
           <h3 class="font-semibold text-white">{{ t('settings.credentials') }}</h3>

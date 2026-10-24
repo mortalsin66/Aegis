@@ -457,7 +457,7 @@ onUnmounted(() => {
       <div class="text-5xl mb-4">🐳</div>
       <h3 class="text-lg font-semibold text-white mb-2">{{ t('containers.dockerNotInstalled') }}</h3>
       <p class="text-sm text-slate-400 mb-5 max-w-md">{{ t('containers.installHint') }}</p>
-      <button @click="installDocker" class="px-5 py-2.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm hover:bg-accent-400">{{ t('containers.installDocker') }}</button>
+      <button v-admin @click="installDocker" class="px-5 py-2.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm hover:bg-accent-400">{{ t('containers.installDocker') }}</button>
     </div>
 
     <template v-if="installed">
@@ -465,7 +465,7 @@ onUnmounted(() => {
       <div v-if="tab === 'containers'" class="card flex-1 min-h-0 flex flex-col overflow-hidden">
         <div class="flex items-center justify-between px-4 py-3 border-b border-ink-700 shrink-0">
           <span class="text-sm text-slate-500">{{ t('containers.tabContainers') }}: {{ containers.length }}</span>
-          <button @click="createOpen = true" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">＋ {{ t('containers.createContainer') }}</button>
+          <button v-admin @click="createOpen = true" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">＋ {{ t('containers.createContainer') }}</button>
         </div>
         <div class="flex-1 overflow-auto">
           <table class="w-full text-sm">
@@ -485,12 +485,12 @@ onUnmounted(() => {
                 <td class="px-4 py-3 hidden md:table-cell font-mono text-slate-500">{{ c.ports || '—' }}</td>
                 <td class="px-4 py-3 text-right whitespace-nowrap">
                   <button @click="openLogs(c)" class="px-2 py-1 rounded bg-ink-700 hover:bg-ink-800 text-xs" :title="t('containers.logs')">≡</button>
-                  <button @click="openInspect(c)" class="px-2 py-1 rounded bg-ink-700 hover:bg-ink-800 text-xs ml-1" :title="t('containers.inspect')">ⓘ</button>
-                  <button v-if="c.state === 'running'" @click="router.push('/terminal?container=' + c.id)" class="px-2 py-1 rounded bg-ink-700 hover:bg-ink-800 text-xs ml-1" :title="t('containers.console')">❯_</button>
-                  <button v-if="c.state === 'running'" @click="action(c.id, 'stop')" class="px-2 py-1 rounded bg-ink-700 hover:bg-ink-800 text-xs ml-1" :title="t('containers.stop')">⏹</button>
-                  <button v-else @click="action(c.id, 'start')" class="px-2 py-1 rounded bg-ok/15 text-ok hover:bg-ok/25 text-xs ml-1" :title="t('containers.start')">▶</button>
-                  <button @click="action(c.id, 'restart')" class="px-2 py-1 rounded bg-ink-700 hover:bg-ink-800 text-xs ml-1" :title="t('containers.restart')">↻</button>
-                  <button @click="action(c.id, 'remove')" class="px-2 py-1 rounded bg-bad/15 text-bad hover:bg-bad/25 text-xs ml-1" :title="t('containers.delete')">🗑</button>
+                  <button v-admin @click="openInspect(c)" class="px-2 py-1 rounded bg-ink-700 hover:bg-ink-800 text-xs ml-1" :title="t('containers.inspect')">ⓘ</button>
+                  <button v-admin v-if="c.state === 'running'" @click="router.push('/terminal?container=' + c.id)" class="px-2 py-1 rounded bg-ink-700 hover:bg-ink-800 text-xs ml-1" :title="t('containers.console')">❯_</button>
+                  <button v-admin v-if="c.state === 'running'" @click="action(c.id, 'stop')" class="px-2 py-1 rounded bg-ink-700 hover:bg-ink-800 text-xs ml-1" :title="t('containers.stop')">⏹</button>
+                  <button v-admin v-else @click="action(c.id, 'start')" class="px-2 py-1 rounded bg-ok/15 text-ok hover:bg-ok/25 text-xs ml-1" :title="t('containers.start')">▶</button>
+                  <button v-admin @click="action(c.id, 'restart')" class="px-2 py-1 rounded bg-ink-700 hover:bg-ink-800 text-xs ml-1" :title="t('containers.restart')">↻</button>
+                  <button v-admin @click="action(c.id, 'remove')" class="px-2 py-1 rounded bg-bad/15 text-bad hover:bg-bad/25 text-xs ml-1" :title="t('containers.delete')">🗑</button>
                 </td>
               </tr>
               <tr v-if="!containers.length && !busy"><td colspan="5" class="px-4 py-6 text-center text-slate-500">{{ t('containers.noContainers') }}</td></tr>
@@ -503,7 +503,7 @@ onUnmounted(() => {
       <div v-else-if="tab === 'images'" class="card flex-1 min-h-0 flex flex-col overflow-hidden">
         <div class="flex items-center justify-between px-4 py-3 border-b border-ink-700 shrink-0">
           <span class="text-sm text-slate-500">{{ t('containers.tabImages') }}: {{ images.length }}</span>
-          <button @click="pullOpen = true" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">⬇ Pull</button>
+          <button v-admin @click="pullOpen = true" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">⬇ Pull</button>
         </div>
         <div class="flex-1 overflow-auto">
           <table class="w-full text-sm">
@@ -516,7 +516,7 @@ onUnmounted(() => {
                 <td class="px-4 py-3 font-mono text-accent-400">{{ i.tag }}</td>
                 <td class="px-4 py-3 font-mono">{{ i.size }}</td>
                 <td class="px-4 py-3 text-slate-500">{{ i.created }}</td>
-                <td class="px-4 py-3 text-right"><button @click="deleteImage(i.id)" class="px-2 py-1 rounded bg-bad/15 text-bad hover:bg-bad/25 text-xs">🗑</button></td>
+                <td class="px-4 py-3 text-right"><button v-admin @click="deleteImage(i.id)" class="px-2 py-1 rounded bg-bad/15 text-bad hover:bg-bad/25 text-xs">🗑</button></td>
               </tr>
               <tr v-if="!images.length"><td colspan="5" class="px-4 py-6 text-center text-slate-500">{{ t('containers.noImages') }}</td></tr>
             </tbody>
@@ -530,7 +530,7 @@ onUnmounted(() => {
           <span class="text-sm text-slate-500">{{ t('containers.tabVolumes') }}: {{ volumes.length }}</span>
           <div class="ml-auto flex gap-2">
             <input v-model="vName" @keyup.enter="createVolume" :placeholder="t('containers.volumeNamePlaceholder')" class="bg-ink-850 border border-ink-700 rounded-lg px-3 py-1.5 text-sm w-44 focus:outline-none focus:border-accent-500" />
-            <button @click="createVolume" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">＋ {{ t('containers.volume') }}</button>
+            <button v-admin @click="createVolume" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">＋ {{ t('containers.volume') }}</button>
           </div>
         </div>
         <div class="flex-1 overflow-auto">
@@ -543,7 +543,7 @@ onUnmounted(() => {
                 <td class="px-4 py-3 font-mono text-white">{{ v.name }}</td>
                 <td class="px-4 py-3 font-mono text-slate-400">{{ v.driver }}</td>
                 <td class="px-4 py-3 font-mono text-slate-500">{{ v.mountpoint }}</td>
-                <td class="px-4 py-3 text-right"><button @click="deleteVolume(v.name)" class="px-2 py-1 rounded bg-bad/15 text-bad hover:bg-bad/25 text-xs">🗑</button></td>
+                <td class="px-4 py-3 text-right"><button v-admin @click="deleteVolume(v.name)" class="px-2 py-1 rounded bg-bad/15 text-bad hover:bg-bad/25 text-xs">🗑</button></td>
               </tr>
               <tr v-if="!volumes.length"><td colspan="4" class="px-4 py-6 text-center text-slate-500">{{ t('containers.noVolumes') }}</td></tr>
             </tbody>
@@ -557,7 +557,7 @@ onUnmounted(() => {
           <span class="text-sm text-slate-500">{{ t('containers.tabNetworks') }}: {{ networks.length }}</span>
           <div class="ml-auto flex gap-2">
             <input v-model="nName" @keyup.enter="createNetwork" :placeholder="t('containers.networkNamePlaceholder')" class="bg-ink-850 border border-ink-700 rounded-lg px-3 py-1.5 text-sm w-44 focus:outline-none focus:border-accent-500" />
-            <button @click="createNetwork" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">＋ {{ t('containers.network') }}</button>
+            <button v-admin @click="createNetwork" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">＋ {{ t('containers.network') }}</button>
           </div>
         </div>
         <div class="flex-1 overflow-auto">
@@ -570,7 +570,7 @@ onUnmounted(() => {
                 <td class="px-4 py-3 font-mono text-white">{{ n.name }}</td>
                 <td class="px-4 py-3 font-mono text-slate-400">{{ n.driver }}</td>
                 <td class="px-4 py-3 font-mono text-slate-500">{{ n.scope }}</td>
-                <td class="px-4 py-3 text-right"><button @click="deleteNetwork(n.name)" class="px-2 py-1 rounded bg-bad/15 text-bad hover:bg-bad/25 text-xs">🗑</button></td>
+                <td class="px-4 py-3 text-right"><button v-admin @click="deleteNetwork(n.name)" class="px-2 py-1 rounded bg-bad/15 text-bad hover:bg-bad/25 text-xs">🗑</button></td>
               </tr>
               <tr v-if="!networks.length"><td colspan="4" class="px-4 py-6 text-center text-slate-500">{{ t('containers.noNetworks') }}</td></tr>
             </tbody>
@@ -582,7 +582,7 @@ onUnmounted(() => {
       <div v-else-if="tab === 'stacks'" class="card flex-1 min-h-0 flex flex-col overflow-hidden">
         <div class="flex items-center justify-between px-4 py-3 border-b border-ink-700 shrink-0">
           <span class="text-sm text-slate-500">{{ t('containers.tabStacks') }} (Docker Compose): {{ stacks.length }}</span>
-          <button @click="openStackCreate" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">＋ {{ t('containers.createStack') }}</button>
+          <button v-admin @click="openStackCreate" class="px-3 py-1.5 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">＋ {{ t('containers.createStack') }}</button>
         </div>
         <div class="flex-1 overflow-auto">
           <table class="w-full text-sm">
@@ -597,9 +597,9 @@ onUnmounted(() => {
                 </td>
                 <td class="px-4 py-3 font-mono text-slate-400">{{ s.containers }}</td>
                 <td class="px-4 py-3 text-right whitespace-nowrap">
-                  <button @click="openStackEdit(s.name)" class="px-2 py-1 rounded bg-ink-700 hover:bg-ink-800 text-xs" :title="t('containers.edit')">✎</button>
-                  <button @click="stackAction(s.name, 'stop')" class="px-2 py-1 rounded bg-ink-700 hover:bg-ink-800 text-xs ml-1" :title="t('containers.stop')">⏹</button>
-                  <button @click="stackAction(s.name, 'remove')" class="px-2 py-1 rounded bg-bad/15 text-bad hover:bg-bad/25 text-xs ml-1" :title="t('containers.delete')">🗑</button>
+                  <button v-admin @click="openStackEdit(s.name)" class="px-2 py-1 rounded bg-ink-700 hover:bg-ink-800 text-xs" :title="t('containers.edit')">✎</button>
+                  <button v-admin @click="stackAction(s.name, 'stop')" class="px-2 py-1 rounded bg-ink-700 hover:bg-ink-800 text-xs ml-1" :title="t('containers.stop')">⏹</button>
+                  <button v-admin @click="stackAction(s.name, 'remove')" class="px-2 py-1 rounded bg-bad/15 text-bad hover:bg-bad/25 text-xs ml-1" :title="t('containers.delete')">🗑</button>
                 </td>
               </tr>
               <tr v-if="!stacks.length"><td colspan="4" class="px-4 py-6 text-center text-slate-500">{{ t('containers.noStacks') }}</td></tr>
@@ -671,7 +671,7 @@ onUnmounted(() => {
       <div class="card w-full max-w-lg flex flex-col max-h-full">
         <div class="flex items-center justify-between px-4 py-3 border-b border-ink-700 shrink-0">
           <span class="font-semibold text-white">{{ t('containers.createContainer') }}</span>
-          <button @click="createOpen = false" class="px-3 py-1.5 rounded-lg bg-ink-850 border border-ink-700 text-sm">{{ t('containers.cancel') }}</button>
+          <button v-admin @click="createOpen = false" class="px-3 py-1.5 rounded-lg bg-ink-850 border border-ink-700 text-sm">{{ t('containers.cancel') }}</button>
         </div>
         <div class="flex-1 overflow-y-auto p-4 space-y-3">
           <div>
@@ -723,7 +723,7 @@ onUnmounted(() => {
         <pre class="bg-black/60 rounded-lg p-3 font-mono text-[11px] leading-5 text-slate-300 h-40 overflow-y-auto">{{ pullLog }}</pre>
         <div v-if="pullStatus === 'done'" class="mt-3 text-ok text-sm">{{ t('containers.completed') }} ✓</div>
         <div v-if="pullStatus === 'error'" class="mt-3 text-bad text-sm">{{ t('containers.error') }}</div>
-        <button v-if="pullStatus !== 'running'" @click="pullOpen = false" class="mt-3 px-4 py-2 rounded-lg bg-ink-850 border border-ink-700 text-sm">{{ t('containers.close') }}</button>
+        <button v-admin v-if="pullStatus !== 'running'" @click="pullOpen = false" class="mt-3 px-4 py-2 rounded-lg bg-ink-850 border border-ink-700 text-sm">{{ t('containers.close') }}</button>
       </div>
     </div>
 
@@ -747,7 +747,7 @@ onUnmounted(() => {
           <textarea v-model="sContent" rows="18" spellcheck="false" class="w-full bg-black/60 border border-ink-700 rounded-lg p-4 font-mono text-[13px] leading-6 text-slate-200 focus:outline-none focus:border-accent-500"></textarea>
         </div>
         <div class="flex justify-end gap-2 px-4 py-3 border-t border-ink-700 shrink-0">
-          <button @click="deployStack" class="px-4 py-2 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">Deploy</button>
+          <button v-admin @click="deployStack" class="px-4 py-2 rounded-lg bg-accent-500 text-ink-950 font-semibold text-sm">Deploy</button>
         </div>
       </div>
     </div>
